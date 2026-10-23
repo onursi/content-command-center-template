@@ -129,6 +129,33 @@ Inhalte stehen in `data.json` (Liste `items`), dein Stand aus dem Board in `stat
 `media_packages/…` zeigt auf den Ordner, den du in `config.json` unter `medien.media_packages` einträgst.
 Stufen: `skript`, `aufgenommen` (= Roh), `schnitt`, `bereit`, `live`. Videos aus dem Upload-Knopf legt der Server selbst an.
 
+## Welcher Upload-Weg passt?
+
+Ehrlich gesagt: **Vollautomatisch öffentlich posten klappt ohne Vorarbeit nur bei YouTube.** Bei TikTok entscheidet TikTok selbst,
+ob deine App öffentlich posten darf. Darum gibt es drei Wege, die der Upload-Agent je nach Lage nimmt:
+
+| Weg | YouTube | TikTok | Gut für | Haken |
+|---|---|---|---|---|
+| **A · Claude in Chrome** (Agent klickt im Studio) | ✅ öffentlich oder geplant | ✅ öffentlich | Start ohne eigene App | Datei höchstens ca. **10 MB**, Chrome muss offen und angemeldet sein |
+| **B · Composio-Schnittstelle** | ✅ öffentlich oder geplant | ⚠️ nur **Entwurf im TikTok-Eingang** | große Dateien, PC muss nicht klicken | TikTok: du tippst am Handy nur noch auf „Posten“ und fügst die Caption ein |
+| **C · Eigene TikTok-App** (geprüft) | – | ✅ öffentlich über die Schnittstelle | volle Automatik auf Dauer | einmalige Einrichtung und Prüfung durch TikTok, dauert Tage bis Wochen |
+
+**Empfehlung zum Start:**
+- **YouTube:** Weg A für kleine Shorts, Weg B ab 10 MB.
+- **TikTok:** Videos unter 10 MB über Weg A, größere über Weg B als Entwurf. Dann bekommst du eine Mitteilung von TikTok,
+  öffnest den Entwurf und tippst auf „Posten“. Die fertige Caption steht im Board zum Kopieren bereit.
+- **Später:** Weg C einrichten, wenn du TikTok komplett ohne Handgriff willst. Anleitung: [docs/TIKTOK-APP.md](docs/TIKTOK-APP.md).
+
+Tipp gegen die 10-MB-Grenze: Rechne mit höchstens etwa **1,3 Mbit/s** (Bild + Ton) für 60 Sekunden, bei 30 Sekunden das Doppelte.
+Mit dem Codec **AV1** sehen Shorts bei dieser Rate meist noch sauber aus, YouTube nimmt AV1 an (für TikTok vorher mit einem Testvideo prüfen,
+sonst H.265 nehmen). Beispiel mit ffmpeg:
+
+```bash
+ffmpeg -i fertig.mp4 -c:v libsvtav1 -preset 6 -b:v 1100k -c:a aac -b:a 96k upload.mp4
+```
+
+Prüf die Datei danach mit dem Auge. Der Agent komprimiert nie selbst, damit nichts ohne dein Wissen an Qualität verliert.
+
 ## Aufbau
 
 | Datei | Aufgabe |
@@ -149,6 +176,7 @@ Stufen: `skript`, `aufgenommen` (= Roh), `schnitt`, `bereit`, `live`. Videos aus
   Jeder Lauf kostet Tokens deines Claude-Kontos.
 - **TikTok-API:** Ohne App-Prüfung durch TikTok gibt es kein öffentliches Posten über die Schnittstelle. Über Composio
   (`TIKTOK_UPLOAD_VIDEO`, `publish: false`) landet das Video nur im TikTok-Eingang, die Caption muss man in der App einsetzen.
+  Eigene App einrichten: [docs/TIKTOK-APP.md](docs/TIKTOK-APP.md).
 - **YouTube-API:** Uploads über die Schnittstelle zählen gegen ein Tageskontingent. Ist es aufgebraucht, scheitert der Upload bis zum nächsten Tag.
 - **Claude in Chrome:** Der Browser-Weg braucht ein offenes Chrome mit der Erweiterung und angemeldeten Konten.
   Das Datei-Werkzeug nimmt höchstens etwa 10 MB; größere Videos meldet der Agent als Fehler, statt sie zu komprimieren.
