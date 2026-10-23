@@ -115,6 +115,7 @@ Der Agent richtet alles ein und fragt nach, was er wissen muss.
    Endet mit `ALLES OK`. Der Test ändert nur den Demo-Eintrag „skript-wochenplan“ und setzt ihn zurück.
 7. **Agenten einschalten** (erst, wenn die Aufträge passen): Lies `geplante-aufgaben/upload.md` und `schnitt.md`,
    passe sie an deinen Ablauf an und setze in `config.json` `"agent": {"aktiv": true}`. Server neu starten.
+   Der Upload-Agent (mit Chrome) bleibt zusätzlich aus, bis du bei `agent.arten.upload` `"aktiv": true` setzt.
 
 ### Eigene Videos eintragen
 
@@ -168,12 +169,42 @@ Prüf die Datei danach mit dem Auge. Der Agent komprimiert nie selbst, damit nic
 | `geplante-aufgaben/*.md` | Aufträge für Upload- und Schnitt-Agent. Platzhalter wie `{{YOUTUBE_KANAL}}` kommen aus `config.json` |
 | `demo/` | Ausgedachte Beispielvideos und `erzeugen.py`, das sie neu baut |
 
+## Sicherheit
+
+Das Board hat kein Login. Diese Schutzmaßnahmen sind eingebaut:
+
+- **Nur erlaubte Hosts:** Der Server beantwortet nur Anfragen an `127.0.0.1`, `localhost` und die Namen in
+  `sicherheit.erlaubte_hosts` (bzw. `CCC_ERLAUBTE_HOSTS`). Andere Host-Header bekommen 403. Das verhindert DNS-Rebinding.
+  Nutzt du einen privaten Tunnel (z. B. Tailscale), trag dessen Namen dort ein, sonst lädt das Board am Handy nicht.
+- **Schreiben nur vom eigenen Board:** POST-Anfragen mit fremdem `Origin`/`Referer` werden abgewiesen (403).
+  Die JSON-Routen (`/api/state`, `/api/item`, `/api/ideen`) verlangen `Content-Type: application/json` (sonst 415),
+  damit eine fremde Webseite nicht mit einem einfachen Formular Daten einschleusen kann.
+- **Geteiltes Token:** Beim ersten Start legt der Server ein zufälliges Token in `.ccc-token` ab (nicht eingecheckt).
+  Board, MCP und Auslöser senden es bei jedem POST als `X-CCC-Token`. Abschalten mit `"sicherheit": {"token": false}`.
+- **Nur freigegebene Dateien:** Ausgeliefert werden das Board, die Icons, `data.json` und die Medienordner aus `config.json`,
+  nie `.env`, `config.json`, `.ccc-token` oder Code. Pfade wie `../` werden abgefangen.
+- **Texte werden escaped:** Titel, Texte, Ideen, Korrekturen und Notizen kommen nie als HTML ins Board, Links nur mit http(s).
+- **Agent eingeschränkt:** Der Auslöser startet `claude -p` mit `--permission-mode dontAsk` und `--allowedTools`
+  (siehe unten). Ein Lauf, der länger als `agent.max_laufzeit_minuten` (Standard 180) braucht, wird beendet und im Board als Fehler gezeigt.
+- Der Arbeitsordner des Schnitt-Agenten wird geprüft: Er muss unter `media_auto` liegen.
+
+Danke an das Community-Review, das mehrere dieser Punkte gefunden hat.
+
 ## Ehrliche Grenzen
 
-- **Der Auslöser startet `claude -p` ohne Rückfragen.** In `config.example.json` steht dafür `--dangerously-skip-permissions`.
-  Der Agent darf dann alles, was dein Claude Code darf. Darum ist der Auslöser standardmäßig **aus**. Lies die Aufträge,
-  bevor du ihn einschaltest, und lass ihn in einem Ordner arbeiten, in dem nichts Wichtiges kaputtgehen kann.
+- **Der Auslöser startet `claude -p` ohne Rückfragen.** Statt `--dangerously-skip-permissions` steht in `config.example.json`
+  eine Liste erlaubter Werkzeuge (`agent.erlaubte_werkzeuge` → `--allowedTools`): die `kommandozentrale`-Werkzeuge
+  (`mcp__kommandozentrale__*`), `Bash(ffmpeg:*)`, `Bash(ffprobe:*)`, `Bash(python:*)`, `Read`, `Write` und `Edit`.
+  Alles andere lehnt `--permission-mode dontAsk` ab. Der Upload-Agent bekommt zusätzlich die Chrome-Werkzeuge und ist standardmäßig aus.
+  Braucht dein Schnitt mehr (z. B. `node`), ergänze nur genau diese Befehle. Der Auslöser ist standardmäßig **aus**.
   Jeder Lauf kostet Tokens deines Claude-Kontos.
+- **Ein Agent lädt alle MCP-Server aus deinem Benutzer-Profil** (User-Scope), nicht nur `kommandozentrale`. Hast du dort
+  z. B. E-Mail, Kalender oder Bezahldienste angebunden, kann der Agent sie sehen. Darum `--allowedTools` nutzen (siehe oben)
+  oder den Auslöser unter einem eigenen Windows-/macOS-Benutzer laufen lassen, der nur die nötigen MCPs hat.
+- **Arbeitsverzeichnis und `.env` trennen:** `agent.arbeitsverzeichnis` steht auf `arbeit/`, nicht auf dem Programmordner.
+  So liegen `.env`, `config.json` und `.ccc-token` nicht im Ordner, in dem der Agent arbeitet. Leg dort keine Zugangsdaten ab.
+- `python` ist erlaubt, damit der Schnitt Skripte ausführen kann. Ein Python-Skript kann alles, was dein Benutzer darf.
+  Wer das nicht will, streicht `Bash(python:*)` und gibt dem Agenten nur feste Skripte frei.
 - **TikTok-API:** Ohne App-Prüfung durch TikTok gibt es kein öffentliches Posten über die Schnittstelle. Über Composio
   (`TIKTOK_UPLOAD_VIDEO`, `publish: false`) landet das Video nur im TikTok-Eingang, die Caption muss man in der App einsetzen.
   Eigene App einrichten: [docs/TIKTOK-APP.md](docs/TIKTOK-APP.md).
@@ -184,7 +215,8 @@ Prüf die Datei danach mit dem Auge. Der Agent komprimiert nie selbst, damit nic
 - **Schnitt-Agent:** Der mitgelieferte Auftrag ist ein Gerüst. Gute Ergebnisse brauchen deine eigenen Regeln (Stil, Grafik, Untertitel),
   einen Transkribierer wie faster-whisper und Rechenleistung. Er legt nur vor, gibt nie selbst frei und postet nie.
 - **Kein Login im Board.** Der Server hört standardmäßig nur auf `127.0.0.1`. Fürs Handy einen privaten Tunnel nutzen
-  (z. B. Tailscale), nie offen ins Internet stellen.
+  (z. B. Tailscale) und dessen Namen in `sicherheit.erlaubte_hosts` eintragen, nie offen ins Internet stellen.
+  Wer das Board im Tunnel öffnen kann, kann auch das Token lesen: Der Tunnel muss privat bleiben.
 - Einzelnutzer-Werkzeug, getestet unter Windows 11 mit Python 3.12. macOS/Linux sollten laufen, sind aber weniger erprobt.
 
 ## Lizenz

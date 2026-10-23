@@ -46,8 +46,11 @@ def _get(pfad):
 
 
 def _post(pfad, daten):
+    kopf = {"Content-Type": "application/json"}
+    if E.token():
+        kopf["X-CCC-Token"] = E.token()      # geteiltes Token des Servers (.ccc-token)
     req = urllib.request.Request(BASE + "/" + pfad, data=json.dumps(daten).encode("utf-8"),
-                                 headers={"Content-Type": "application/json"}, method="POST")
+                                 headers=kopf, method="POST")
     with urllib.request.urlopen(req, timeout=10) as r:
         if r.status not in (200, 204):
             raise RuntimeError(f"Server antwortet {r.status}")
@@ -86,6 +89,20 @@ def _web(pfad):
         if b in pp.parents:
             return prefix + pp.relative_to(b).as_posix()
     raise ValueError(f"Datei muss unter {AUTO_DIR} (Arbeitsordner) oder einem Medienordner liegen: {pfad}")
+
+
+def _arbeitsordner(a, e):
+    """Arbeitsordner aus dem Stand nur übernehmen, wenn er unter AUTO_DIR liegt; sonst Standardordner."""
+    standard = AUTO_DIR / f"{datetime.now():%Y-%m-%d}_{e['id']}"
+    wunsch = a.get("arbeitsordner")
+    if wunsch:
+        try:
+            pp = Path(wunsch).resolve()
+            if AUTO_DIR.resolve() in pp.parents:
+                return str(pp)
+        except (OSError, ValueError):
+            pass
+    return str(standard)
 
 
 def _eintrag(item, stand):
@@ -381,7 +398,7 @@ def schnitt_auftraege() -> list[dict]:
             "weitere_rohdateien": [_absolut(p) for p in (e.get("roh_weitere") or [])],
             "korrektur_von_nutzer": a.get("korrektur") if st.startswith("korrektur") else None,
             "bisherige_vorschau": {k: _absolut(v) for k, v in (a.get("vorschau") or {}).items()},
-            "arbeitsordner": a.get("arbeitsordner") or str(AUTO_DIR / f"{datetime.now():%Y-%m-%d}_{e['id']}"),
+            "arbeitsordner": _arbeitsordner(a, e),
             "verlauf": a.get("verlauf") or [],
         })
     return out
@@ -398,7 +415,7 @@ def schnitt_beginnen(video_id: str, schritt: str = "Transkribieren und Roh-Schni
         st = a.get("vorher") or "wartet"
     if st not in AGENT_DRAN:
         raise ValueError(f"„{e.get('titel')}“ wartet nicht auf den Agenten (Status {a.get('status')}).")
-    ordner = a.get("arbeitsordner") or str(AUTO_DIR / f"{datetime.now():%Y-%m-%d}_{e['id']}")
+    ordner = _arbeitsordner(a, e)
     Path(ordner).mkdir(parents=True, exist_ok=True)
     _setzen(video_id, {"auto": _auto(e, status="in_arbeit", vorher=st, schritt=schritt, arbeitsordner=ordner, meldung=None)})
     return f"Gestartet ({AGENT_DRAN[st]}). Arbeitsordner: {ordner}"

@@ -9,6 +9,7 @@ from pathlib import Path
 import traceback
 import time
 import json
+import hmac
 import threading
 import agent_ausloeser   # startet Agenten nur bei echter Arbeit
 import einstellungen as E
@@ -26,6 +27,7 @@ LOG_FILE = WEB_DIR / "server.log"
 OEFFENTLICH = {"/", "/index.html", "/data.json", "/manifest.json", "/favicon.ico", "/favicon-16x16.png",
                "/favicon-32x32.png", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/command-center.ico"}
 STATE_LOCK = threading.Lock()
+JSON_ROUTEN = ("/api/state", "/api/item", "/api/ideen")
 
 if sys.stderr is None:
     sys.stderr = open(WEB_DIR / "stderr.log", "a", encoding="utf-8")
@@ -75,10 +77,45 @@ class MediaStreamingHandler(http.server.SimpleHTTPRequestHandler):
             return str(WEB_DIR / "__gesperrt__")
         return super().translate_path(clean)
 
+    # ------------------------------------------------ Herkunft prüfen (CSRF, DNS-Rebinding)
+    def _abweisen(self, code, grund):
+        log(f"Abgewiesen ({code}): {grund} · {self.command} {self.path.split('?')[0]} · Host={self.headers.get('Host')!r}")
+        self.send_error(code, grund)
+
+    def _host_ok(self):
+        """Nur Anfragen an erlaubte Hostnamen (127.0.0.1, localhost, sicherheit.erlaubte_hosts)."""
+        if E.host_erlaubt(self.headers.get("Host")):
+            return True
+        self._abweisen(403, "Host nicht erlaubt (in config.json unter sicherheit.erlaubte_hosts eintragen)")
+        return False
+
+    def _post_ok(self):
+        """POST nur vom eigenen Board: Host, Origin/Referer (falls gesendet) und geteiltes Token."""
+        if not self._host_ok():
+            return False
+        origin = self.headers.get("Origin")
+        if origin is not None:
+            if not E.host_erlaubt(origin):          # auch "null" (Sandbox, file://) wird abgewiesen
+                self._abweisen(403, "Origin nicht erlaubt"); return False
+        elif self.headers.get("Referer") and not E.host_erlaubt(self.headers.get("Referer")):
+            self._abweisen(403, "Referer nicht erlaubt"); return False
+        soll = E.token()
+        if soll and not hmac.compare_digest(self.headers.get("X-CCC-Token", ""), soll):
+            self._abweisen(403, "Token fehlt oder falsch"); return False
+        return True
+
+    def do_HEAD(self):
+        if self._host_ok():
+            super().do_HEAD()
+
     # Gemeinsamer Stand (Pipeline-Stufen, Häkchen, Ideen) für Handy und PC
     def do_GET(self):
+        if not self._host_ok():
+            return
         if self.path.split("?")[0].endswith("/api/config"):
-            body = json.dumps({"anzeigename": E.ANZEIGENAME, "agent_aktiv": E.AGENT_AKTIV}, ensure_ascii=False).encode("utf-8")
+            # Das Token steht nur hier: fremde Webseiten können diese Antwort nicht lesen (kein CORS, Host-Prüfung)
+            body = json.dumps({"anzeigename": E.ANZEIGENAME, "agent_aktiv": E.AGENT_AKTIV, "token": E.token()},
+                              ensure_ascii=False).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -181,7 +218,7 @@ class MediaStreamingHandler(http.server.SimpleHTTPRequestHandler):
         if ext != ".jpg":
             import subprocess
             r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(roh), "-q:v", "2", str(ziel)],
-                               capture_output=True, creationflags=0x08000000)
+                               capture_output=True, creationflags=0x08000000 if os.name == "nt" else 0)   # Windows: kein Konsolenfenster
             if r.returncode != 0 or not ziel.is_file():
                 self.send_error(500, "Umwandlung in JPG fehlgeschlagen"); return
             roh.unlink(missing_ok=True)
@@ -207,12 +244,17 @@ class MediaStreamingHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         route = self.path.split("?")[0]
+        if not self._post_ok():
+            return
         if route.endswith("/api/upload"):
             return self.upload()
         if route.endswith("/api/bild"):
             return self.bild_upload()
-        if not any(route.endswith(r) for r in ("/api/state", "/api/item", "/api/ideen")):
+        if not any(route.endswith(r) for r in JSON_ROUTEN):
             self.send_error(404); return
+        # JSON-Routen nur mit application/json: ein <form enctype="text/plain"> kann das nicht senden
+        if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+            return self._abweisen(415, "Content-Type application/json noetig")
         n = int(self.headers.get("Content-Length") or 0)
         if n <= 0 or n > 2_000_000:
             self.send_error(413); return
@@ -344,6 +386,8 @@ if __name__ == "__main__":
     try:
         os.chdir(str(WEB_DIR))
         E.erster_start()
+        E.token()   # Token beim ersten Start anlegen
+        log(f"Erlaubte Hosts: {', '.join(sorted(E.ERLAUBTE_HOSTS))} · Token {'an' if E.TOKEN_AKTIV else 'aus'}")
         log(f"Starting Threading Media Server on {HOST}:{PORT}")
         agent_ausloeser.starten(log)
         with ThreadingTCPServer((HOST, PORT), MediaStreamingHandler) as httpd:

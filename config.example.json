@@ -4,6 +4,10 @@
     "host": "127.0.0.1",
     "port": 8899
   },
+  "sicherheit": {
+    "erlaubte_hosts": [],
+    "token": true
+  },
   "daten": {
     "inhalte": "data.json",
     "stand": "state.json"
@@ -21,11 +25,27 @@
   "agent": {
     "aktiv": false,
     "claude_befehl": "claude",
-    "arbeitsverzeichnis": ".",
-    "claude_argumente": ["--dangerously-skip-permissions"],
+    "arbeitsverzeichnis": "arbeit",
+    "claude_argumente": ["--permission-mode", "dontAsk"],
+    "erlaubte_werkzeuge": [
+      "mcp__kommandozentrale__*",
+      "Bash(ffmpeg:*)",
+      "Bash(ffprobe:*)",
+      "Bash(python:*)",
+      "Read",
+      "Write",
+      "Edit"
+    ],
     "pause_minuten": 10,
+    "max_laufzeit_minuten": 180,
     "arten": {
-      "upload": { "auftrag": "upload.md", "modell": "claude-sonnet-5-5", "chrome": true },
+      "upload": {
+        "auftrag": "upload.md",
+        "modell": "claude-sonnet-5-5",
+        "chrome": true,
+        "aktiv": false,
+        "erlaubte_werkzeuge_zusatz": ["mcp__claude-in-chrome__*"]
+      },
       "schnitt": { "auftrag": "schnitt.md", "modell": "claude-opus-5-5", "chrome": false }
     }
   }

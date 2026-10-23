@@ -5,6 +5,7 @@ __pycache__/
 *.part
 agent-laeufe/
 AUSLOESER-AUS
+.ccc-token
 
 # Eigene Inhalte und Einstellungen (bleiben lokal)
 data.json

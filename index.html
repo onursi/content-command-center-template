@@ -353,8 +353,15 @@ let offenId = null;
 let zuletztBewegt = null;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const url = p => encodeURI(p);
+const url = p => { const s = String(p ?? ""); if (/^\s*[a-z][a-z0-9+.-]*:/i.test(s) && !/^https?:/i.test(s)) return "#"; return encodeURI(s).replace(/'/g, "%27"); };
+// Werte in onclick="f(...)": erst als JS-String, dann für das HTML-Attribut escapen
+const js = s => esc(JSON.stringify(String(s ?? "")));
+const sicherLink = s => /^https?:\/\//i.test(String(s ?? "")) ? String(s) : "#";
 const $ = id => document.getElementById(id);
+// Geteiltes Token des Servers (POST nur mit X-CCC-Token). Kommt aus api/config, das fremde Seiten nicht lesen können.
+let TOKEN = "";
+const KONFIG = fetch("api/config", { cache: "no-store" }).then(r => r.json()).then(c => { TOKEN = c.token || ""; return c; }).catch(() => ({}));
+async function kopf() { await KONFIG; return TOKEN ? { "Content-Type": "application/json", "X-CCC-Token": TOKEN } : { "Content-Type": "application/json" }; }
 
 function eintrag(it) { return Object.assign({}, it, STAND.items[it.id] || {}); }
 // entfernt: true (in state.json) blendet ein Video überall aus; data.json bleibt unverändert
@@ -383,7 +390,7 @@ async function standHolen() {
 async function speichern() {
   try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
   try {
-    const r = await fetch("api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(STAND) });
+    const r = await fetch("api/state", { method: "POST", headers: await kopf(), body: JSON.stringify(STAND) });
     syncAnzeige(r.ok);
   } catch (e) { syncAnzeige(false); }
 }
@@ -393,13 +400,13 @@ async function setzen(id, aenderung) {
   STAND.items[id] = Object.assign({}, STAND.items[id] || {}, aenderung);
   try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
   try {
-    const r = await fetch("api/item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, set: aenderung }) });
+    const r = await fetch("api/item", { method: "POST", headers: await kopf(), body: JSON.stringify({ id, set: aenderung }) });
     syncAnzeige(r.ok);
   } catch (e) { syncAnzeige(false); }
 }
 async function ideenSpeichern() {
   try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
-  try { const r = await fetch("api/ideen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ideen: STAND.ideen }) }); syncAnzeige(r.ok); }
+  try { const r = await fetch("api/ideen", { method: "POST", headers: await kopf(), body: JSON.stringify({ ideen: STAND.ideen }) }); syncAnzeige(r.ok); }
   catch (e) { syncAnzeige(false); }
 }
 
@@ -456,9 +463,9 @@ function planHtml(it) {
     <input type="datetime-local" id="planZeit" value="${esc(p.zeit || "")}">
     <div class="plan-plattformen">${PLATTFORMEN.map(x => `<label><input type="checkbox" value="${x.id}" ${(p.plattformen || PLATTFORMEN.map(y => y.id)).includes(x.id) ? "checked" : ""}> ${x.name}</label>`).join("")}</div>
     <div class="plan-knoepfe"><small>${esc(status)}</small>
-      ${p.zeit ? `<button class="knopf" onclick="planEntfernen('${it.id}')">Termin löschen</button>` : ""}
-      <button class="knopf primaer" onclick="planSpeichern('${it.id}')">${p.zeit ? "Ändern" : "Einplanen"}</button>
-      ${offen.length || !p.zeit ? `<button class="knopf" onclick="jetztPosten('${it.id}')">Jetzt posten</button>` : ""}</div>
+      ${p.zeit ? `<button class="knopf" onclick="planEntfernen(${js(it.id)})">Termin löschen</button>` : ""}
+      <button class="knopf primaer" onclick="planSpeichern(${js(it.id)})">${p.zeit ? "Ändern" : "Einplanen"}</button>
+      ${offen.length || !p.zeit ? `<button class="knopf" onclick="jetztPosten(${js(it.id)})">Jetzt posten</button>` : ""}</div>
   </div></div>`;
 }
 function planSpeichern(id) {
@@ -509,11 +516,11 @@ function autoHtml(it) {
       ${v.storyboard ? `<a href="${url(v.storyboard)}" target="_blank" rel="noopener"><img src="${url(v.storyboard)}" alt="Storyboard"></a>` : "<small>Kein Storyboard</small>"}</div>`;
   const notiz = a.notiz ? `<p>${esc(a.notiz)}</p>` : "";
   const korr = a.korrektur && /korrektur/.test(a.status) ? `<p><b>Deine Korrektur:</b> ${esc(a.korrektur)}</p>` : "";
-  const fehler = a.status === "fehler" ? `<p style="color:#ff8a80">${esc(a.meldung || "")}</p><div class="reihe"><button class="knopf primaer" onclick="autoErneut('${it.id}')">Erneut versuchen</button></div>` : "";
+  const fehler = a.status === "fehler" ? `<p style="color:#ff8a80">${esc(a.meldung || "")}</p><div class="reihe"><button class="knopf primaer" onclick="autoErneut(${js(it.id)})">Erneut versuchen</button></div>` : "";
   const schritt = a.status === "in_arbeit" && a.schritt ? `<p>${esc(a.schritt)}</p>` : "";
   const aktion = t[2] ? `<textarea id="autoKorrektur" placeholder="Korrektur (optional) …"></textarea>
-      <div class="reihe"><button class="knopf primaer" onclick="autoFreigeben('${it.id}')">Freigeben</button>
-      <button class="knopf" onclick="autoKorrigieren('${it.id}')">Korrektur senden</button></div>` : "";
+      <div class="reihe"><button class="knopf primaer" onclick="autoFreigeben(${js(it.id)})">Freigeben</button>
+      <button class="knopf" onclick="autoKorrigieren(${js(it.id)})">Korrektur senden</button></div>` : "";
   return `<div><div class="label">Automatischer Schnitt</div><div class="auto ${t[2] ? "du" : ""}">
     <h4>${a.status === "fehler" ? "⚠ " : ""}${esc(t[0])}</h4>${t[1] ? `<p>${esc(t[1])}</p>` : ""}${schritt}${notiz}${korr}${medien}${fehler}${aktion}
     ${a.seit ? `<small>Stand: ${esc(new Date(a.seit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }))}</small>` : ""}</div></div>`;
@@ -562,10 +569,12 @@ function uploadOeffnen() {
 }
 /* Mehrere Anläufe (2026-10-21): Dateien nacheinander hochladen, alle hängen an EINEM Video.
    Der Agent startet erst, wenn alle da sind (Status „hochladen“ → „wartet“). */
-function eineDateiHochladen(f, url, nr, anzahl) {
+async function eineDateiHochladen(f, url, nr, anzahl) {
+  await KONFIG;
   return new Promise((ok, fehler) => {
     const x = new XMLHttpRequest();
     x.open("POST", url);
+    if (TOKEN) x.setRequestHeader("X-CCC-Token", TOKEN);
     x.upload.onprogress = e => { if (e.lengthComputable) { const p = e.loaded / e.total * 100; $("upBalken").style.width = p + "%"; $("upInfo").textContent = `${anzahl > 1 ? `Anlauf ${nr} von ${anzahl}: ` : ""}${(e.loaded / 1048576).toFixed(0)} von ${(e.total / 1048576).toFixed(0)} MB`; } };
     x.onload = () => x.status === 200 ? ok(JSON.parse(x.responseText)) : fehler(new Error("Upload fehlgeschlagen (" + x.status + ")"));
     x.onerror = () => fehler(new Error("Upload abgebrochen – Verbindung prüfen"));
@@ -595,10 +604,12 @@ async function uploadStarten() {
 function thumbnailAendern(id) {
   const inp = document.createElement("input");
   inp.type = "file"; inp.accept = "image/jpeg,image/png,image/webp";
-  inp.onchange = () => {
+  inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
+    await KONFIG;
     const x = new XMLHttpRequest();
     x.open("POST", `api/bild?id=${encodeURIComponent(id)}&name=${encodeURIComponent(f.name)}`);
+    if (TOKEN) x.setRequestHeader("X-CCC-Token", TOKEN);
     x.onload = async () => {
       if (x.status !== 200) return toast("Thumbnail konnte nicht gespeichert werden (" + x.status + ")");
       await aktualisieren(); if (offenId === id) blattFuellen(id); toast("Neues Thumbnail gespeichert");
@@ -622,7 +633,7 @@ function fehlerHtml(it) {
   return `<div><div class="label">Upload-Fehler</div>${Object.entries(f).map(([p, v]) => `
     <div class="fehler-box"><b>${esc(PLATTFORMEN.find(x => x.id === p)?.name || p)}</b>
       <p>${esc(v.meldung)}</p><small>${esc(v.zeit ? new Date(v.zeit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "")} · Selbst hochladen und abhaken oder:</small>
-      <button class="knopf primaer" onclick="erneutVersuchen('${it.id}','${p}')">Erneut versuchen</button></div>`).join("")}</div>`;
+      <button class="knopf primaer" onclick="erneutVersuchen(${js(it.id)},${js(p)})">Erneut versuchen</button></div>`).join("")}</div>`;
 }
 function ohne(obj, key) { const o = Object.assign({}, obj || {}); delete o[key]; return Object.keys(o).length ? o : null; }
 function erneutVersuchen(id, p) {
@@ -644,8 +655,8 @@ function verworfenFuellen() {
     <div class="verworfen-zeile">
       ${it.bild ? `<div class="bild" style="background-image:url('${url(it.bild)}')"></div>` : `<div class="bild skript">${SKRIPT_ICON}</div>`}
       <div class="t"><b>${esc(it.titel)}</b><small>${esc([STUFEN.find(s => s.id === it.stage)?.name, it.tiktok && "TikTok", it.youtube && "YouTube", it.entfernt_am && "verworfen " + new Date(it.entfernt_am).toLocaleDateString("de-DE")].filter(Boolean).join(" · "))}</small></div>
-      <button class="knopf" onclick="blattAuf('${it.id}')">Ansehen</button>
-      <button class="knopf primaer" onclick="zurueckholen('${it.id}');verworfenFuellen()">Zurückholen</button>
+      <button class="knopf" onclick="blattAuf(${js(it.id)})">Ansehen</button>
+      <button class="knopf primaer" onclick="zurueckholen(${js(it.id)});verworfenFuellen()">Zurückholen</button>
     </div>`).join("") || '<div class="leer">Noch nichts verworfen</div>'}</div></div>`;
 }
 
@@ -664,9 +675,9 @@ function textBearbeiten(id, i) {
   zeile.querySelector(".text-vorschau").style.display = "none";
   const box = document.createElement("div"); box.className = "text-edit";
   box.innerHTML = `<textarea></textarea><div>
-    ${textBearbeitet(id, i) ? `<button class="knopf" onclick="textOriginal('${id}',${i})">Original wiederherstellen</button>` : ""}
-    <button class="knopf" onclick="blattFuellen('${id}')">Abbrechen</button>
-    <button class="knopf primaer" onclick="textSpeichern('${id}',${i})">Speichern</button></div>`;
+    ${textBearbeitet(id, i) ? `<button class="knopf" onclick="textOriginal(${js(id)},${i})">Original wiederherstellen</button>` : ""}
+    <button class="knopf" onclick="blattFuellen(${js(id)})">Abbrechen</button>
+    <button class="knopf primaer" onclick="textSpeichern(${js(id)},${i})">Speichern</button></div>`;
   zeile.appendChild(box);
   const ta = box.querySelector("textarea"); ta.value = textVon(id, i); ta.focus();
 }
@@ -693,12 +704,12 @@ function karteHtml(it) {
   const bild = it.bild ? `<div class="bild" style="background-image:url('${url(it.bild)}')"></div>` : `<div class="bild skript">${SKRIPT_ICON}</div>`;
   let fuss = "";
   if (it.stage === "bereit" || it.stage === "live") {
-    fuss = PLATTFORMEN.map(p => `<button class="plattform ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten('${it.id}','${p.id}',event)" aria-pressed="${!!it[p.id]}"><span class="box">${HAKEN}</span>${p.name}</button>`).join("");
+    fuss = PLATTFORMEN.map(p => `<button class="plattform ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten(${js(it.id)},'${p.id}',event)" aria-pressed="${!!it[p.id]}"><span class="box">${HAKEN}</span>${p.name}</button>`).join("");
   } else {
     const naechste = STUFEN[STUFEN.findIndex(s => s.id === it.stage) + 1];
-    fuss = (it.dauer ? `<span class="chip">${esc(it.dauer)}</span>` : "") + `<button class="weiter" onclick="weiter('${it.id}',event)">${naechste.name} ${PFEIL}</button>`;
+    fuss = (it.dauer ? `<span class="chip">${esc(it.dauer)}</span>` : "") + `<button class="weiter" onclick="weiter(${js(it.id)},event)">${naechste.name} ${PFEIL}</button>`;
   }
-  return `<div class="karte ${it.stage === "bereit" ? "bereit" : ""} ${zuletztBewegt === it.id ? "neu" : ""}" role="button" tabindex="0" onclick="blattAuf('${it.id}')" onkeydown="if(event.key==='Enter')blattAuf('${it.id}')">
+  return `<div class="karte ${it.stage === "bereit" ? "bereit" : ""} ${zuletztBewegt === it.id ? "neu" : ""}" role="button" tabindex="0" onclick="blattAuf(${js(it.id)})" onkeydown="if(event.key==='Enter')blattAuf(${js(it.id)})">
     ${bild}
     <div class="karte-text">
       ${it.take ? `<div class="take">${esc(it.take)}</div>` : ""}
@@ -753,22 +764,22 @@ function blattFuellen(id) {
     ? `<div class="player" id="playerPlatz"></div>`
     : `<div class="player" style="display:grid;place-items:center;background:linear-gradient(160deg,#2E2B29,#232325)">${SKRIPT_ICON}</div>`;
   const schalter = (it.stage === "bereit" || it.stage === "live") ? `<div><div class="label">Gepostet</div><div class="schalter-liste">${PLATTFORMEN.map(p =>
-    `<button class="schalter ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten('${it.id}','${p.id}')"><span class="box">${HAKEN}</span><b>${p.name}</b><small>${it[p.id] ? "erledigt" : "offen"}</small></button>`).join("")}</div></div>` : "";
+    `<button class="schalter ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten(${js(it.id)},'${p.id}')"><span class="box">${HAKEN}</span><b>${p.name}</b><small>${it[p.id] ? "erledigt" : "offen"}</small></button>`).join("")}</div></div>` : "";
   const aktionen = [
     it.video ? `<a class="knopf primaer" href="${url(it.video)}?download=1" download>⬇️ Video laden</a>` : "",
     it.bild && it.video ? `<a class="knopf" href="${url(it.bild)}" download>Thumbnail</a>` : "",
-    `<button class="knopf" onclick="thumbnailAendern('${it.id}')">🖼️ Thumbnail ändern</button>`,
-    it.bild_vorher !== undefined ? `<button class="knopf" onclick="thumbnailZurueck('${it.id}')">Altes Thumbnail zurück</button>` : "",
+    `<button class="knopf" onclick="thumbnailAendern(${js(it.id)})">🖼️ Thumbnail ändern</button>`,
+    it.bild_vorher !== undefined ? `<button class="knopf" onclick="thumbnailZurueck(${js(it.id)})">Altes Thumbnail zurück</button>` : "",
     it.roh ? `<a class="knopf" href="${url(it.roh)}?download=1" download>⬇️ Rohdatei</a>` : "",
-    it.youtube_link ? `<a class="knopf" href="${esc(it.youtube_link)}" target="_blank" rel="noopener">Auf YouTube ↗</a>` : "",
+    it.youtube_link ? `<a class="knopf" href="${esc(sicherLink(it.youtube_link))}" target="_blank" rel="noopener">Auf YouTube ↗</a>` : "",
   ].filter(Boolean).join("");
   const texte = (it.texte || []).map((t, i) => { const txt = textVon(it.id, i); return `<div class="text-zeile" id="tz${i}">
       <div class="text-kopf"><b>${esc(t.name)}</b>
         ${textBearbeitet(it.id, i) ? `<span class="marke-neu">bearbeitet</span>` : ""}
-        ${t.prompter ? `<button onclick="prompterAuf('${it.id}',${i})">Teleprompter</button>` : ""}
+        ${t.prompter ? `<button onclick="prompterAuf(${js(it.id)},${i})">Teleprompter</button>` : ""}
         <button onclick="this.closest('.text-zeile').classList.toggle('offen')">Lesen</button>
-        <button onclick="textBearbeiten('${it.id}',${i})">Bearbeiten</button>
-        <button class="kopieren" onclick="kopieren('${it.id}',${i})">Kopieren</button>
+        <button onclick="textBearbeiten(${js(it.id)},${i})">Bearbeiten</button>
+        <button class="kopieren" onclick="kopieren(${js(it.id)},${i})">Kopieren</button>
       </div>
       <div class="text-vorschau">${esc(txt.replace(/\s+/g, " ").slice(0, 120))}</div>
       <div class="text-voll">${esc(txt)}</div>
@@ -777,7 +788,7 @@ function blattFuellen(id) {
     <div class="oben">
       ${playerHtml}
       <div class="status">
-        <div><div class="label">Stufe</div><div class="stufen">${STUFEN.map(s => `<button class="${s.id === it.stage ? "an" : ""}" onclick="stufeSetzen('${it.id}','${s.id}')">${s.name}</button>`).join("")}</div></div>
+        <div><div class="label">Stufe</div><div class="stufen">${STUFEN.map(s => `<button class="${s.id === it.stage ? "an" : ""}" onclick="stufeSetzen(${js(it.id)},'${s.id}')">${s.name}</button>`).join("")}</div></div>
         ${schalter}
         ${fehlerHtml(it)}
         ${planHtml(it)}
@@ -789,8 +800,8 @@ function blattFuellen(id) {
     ${texte ? `<div><div class="label">Texte</div><div class="texte">${texte}</div></div>` : ""}
     ${it.ordner ? `<div><div class="label">Ordner</div><div class="pfad"><code>${esc(it.ordner)}</code><button onclick="kopierText(this.previousElementSibling.textContent)">Kopieren</button></div></div>` : ""}
     <div>${it.entfernt
-      ? `<button class="knopf primaer" onclick="zurueckholen('${it.id}')">Zurückholen ins Board</button>`
-      : `<button class="knopf" style="color:#ff8a80;border-color:rgba(255,138,128,.35)" onclick="entfernen('${it.id}')">Aus dem Board entfernen</button>`}</div>`;
+      ? `<button class="knopf primaer" onclick="zurueckholen(${js(it.id)})">Zurückholen ins Board</button>`
+      : `<button class="knopf" style="color:#ff8a80;border-color:rgba(255,138,128,.35)" onclick="entfernen(${js(it.id)})">Aus dem Board entfernen</button>`}</div>`;
   if (quelle) {
     const platz = $("playerPlatz");
     if (behalteVideo) platz.appendChild(vorhandenesVideo);
@@ -824,7 +835,7 @@ function ideenFuellen() {
     </div>
     <div><div class="label">${STAND.ideen.length} gespeichert</div><div class="texte">${STAND.ideen.slice().reverse().map(i => `
       <div class="idee"><div style="flex:1;min-width:0"><p>${esc(i.text)}</p><small>${esc([i.quelle, i.zeit && new Date(i.zeit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })].filter(Boolean).join(" · "))}</small></div>
-        <button onclick="kopierText(${esc(JSON.stringify(i.text))})">Kopieren</button><button onclick="ideeLoeschen('${esc(i.id)}')">Löschen</button></div>`).join("") || '<div class="leer">Noch keine Ideen</div>'}</div></div>`;
+        <button onclick="kopierText(${esc(JSON.stringify(i.text))})">Kopieren</button><button onclick="ideeLoeschen(${js(i.id)})">Löschen</button></div>`).join("") || '<div class="leer">Noch keine Ideen</div>'}</div></div>`;
   $("ideeText").value = entwurf;
 }
 function ideeSpeichern(quelle) {
@@ -877,7 +888,7 @@ window.addEventListener("pageshow", e => { if (e.persisted) aktualisieren(); });
 setInterval(() => { if (document.visibilityState === "visible" && !offenId) aktualisieren(); }, 60000);
 if (matchMedia("(max-width: 760px)").matches === false) reiterAktiv = reiterAktiv || "bereit";
 laden();
-fetch("api/config", { cache: "no-store" }).then(r => r.json()).then(c => { if (c.anzeigename) { $("anzeigename").textContent = c.anzeigename; document.title = "Command Center · " + c.anzeigename; } }).catch(() => {});
+KONFIG.then(c => { if (c.anzeigename) { $("anzeigename").textContent = c.anzeigename; document.title = "Command Center · " + c.anzeigename; } }).catch(() => {});
 
 </script>
 
