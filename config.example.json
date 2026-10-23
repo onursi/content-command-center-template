@@ -1,0 +1,32 @@
+{
+  "anzeigename": "Demo-Kanal",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8899
+  },
+  "daten": {
+    "inhalte": "data.json",
+    "stand": "state.json"
+  },
+  "medien": {
+    "media_packages": "demo/media",
+    "media_raw": "arbeit/rohaufnahmen",
+    "media_uploads": "arbeit/uploads",
+    "media_auto": "arbeit/schnitt"
+  },
+  "kanaele": {
+    "youtube_kanal": "Dein YouTube-Kanalname",
+    "tiktok_konto": "@dein_tiktok_konto"
+  },
+  "agent": {
+    "aktiv": false,
+    "claude_befehl": "claude",
+    "arbeitsverzeichnis": ".",
+    "claude_argumente": ["--dangerously-skip-permissions"],
+    "pause_minuten": 10,
+    "arten": {
+      "upload": { "auftrag": "upload.md", "modell": "claude-sonnet-5-5", "chrome": true },
+      "schnitt": { "auftrag": "schnitt.md", "modell": "claude-opus-5-5", "chrome": false }
+    }
+  }
+}

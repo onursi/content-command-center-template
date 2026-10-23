@@ -1,0 +1,76 @@
+{
+ "items": {
+  "live-ki-morgen": {
+   "tiktok": true,
+   "youtube": true,
+   "tiktok_gepostet_am": "2026-10-21T18:02:11",
+   "youtube_gepostet_am": "2026-10-21T18:05:40",
+   "links": {
+    "youtube": "https://www.youtube.com/shorts/BEISPIEL",
+    "tiktok": "https://www.tiktok.com/@beispiel"
+   }
+  },
+  "bereit-downloads": {
+   "plan": {
+    "zeit": "2030-01-15T18:00",
+    "plattformen": [
+     "tiktok",
+     "youtube"
+    ],
+    "gesetzt_am": "2026-10-22T09:00:00"
+   }
+  },
+  "schnitt-thumbnail": {
+   "auto": {
+    "status": "video_bereit",
+    "seit": "2026-10-22T14:10:00",
+    "notiz": "Fertig gerendert, 19 s. Hook auf den ersten Satz gezogen. Bitte Ende prüfen.",
+    "verlauf": [
+     {
+      "zeit": "2026-10-22T11:00:00",
+      "agent": "Roh-Schnitt + Storyboard vorgelegt"
+     },
+     {
+      "zeit": "2026-10-22T11:30:00",
+      "du": "Roh-Schnitt freigegeben"
+     },
+     {
+      "zeit": "2026-10-22T14:10:00",
+      "agent": "Fertiges Video vorgelegt"
+     }
+    ]
+   }
+  },
+  "roh-kaffee": {
+   "auto": {
+    "status": "rohschnitt_bereit",
+    "seit": "2026-10-23T09:20:00",
+    "notiz": "Länge 48 s → 17 s. Hook-Vorschlag: „Dein Kaffee wird kalt, weil du Mails sortierst.“ Satz bei 0:12 klingt übertrieben, bitte prüfen.",
+    "vorschau": {
+     "rohschnitt": "media_packages/roh-kaffee_rohschnitt.mp4",
+     "storyboard": "media_packages/roh-kaffee_storyboard.jpg"
+    },
+    "verlauf": [
+     {
+      "zeit": "2026-10-23T09:20:00",
+      "agent": "Roh-Schnitt + Storyboard vorgelegt"
+     }
+    ]
+   }
+  }
+ },
+ "ideen": [
+  {
+   "id": "1",
+   "text": "Vorher/Nachher: ein Tag ohne und mit Agent",
+   "quelle": "Demo",
+   "zeit": "2026-10-20T08:00:00"
+  },
+  {
+   "id": "2",
+   "text": "Die drei Fehler, die ich beim ersten MCP gemacht habe",
+   "quelle": "Demo",
+   "zeit": "2026-10-21T20:15:00"
+  }
+ ]
+}

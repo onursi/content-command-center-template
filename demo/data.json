@@ -1,0 +1,135 @@
+{
+ "stand": "demo",
+ "items": [
+  {
+   "id": "live-ki-morgen",
+   "titel": "3 KI-Tools, die mir jeden Morgen 30 Minuten sparen",
+   "untertitel": "Ausgedachtes Beispielvideo",
+   "take": "Take 2",
+   "stage": "live",
+   "datum": "2026-10-20",
+   "dauer": "24 s",
+   "bild": "media_packages/live-ki-morgen.jpg",
+   "video": "media_packages/live-ki-morgen.mp4",
+   "texte": [
+    {
+     "name": "TikTok-Caption",
+     "text": "Was würdest du zuerst automatisieren? 👇\n\n#ki #produktivität #ki"
+    },
+    {
+     "name": "Angepinnter Kommentar",
+     "text": "Welches Tool fehlt hier? Schreib es in die Kommentare."
+    },
+    {
+     "name": "YouTube-Titel",
+     "text": "3 KI-Tools, die mir jeden Morgen 30 Minuten sparen"
+    },
+    {
+     "name": "YouTube-Beschreibung",
+     "text": "Beispieltext aus den Demodaten des Content Command Center."
+    },
+    {
+     "name": "YouTube-Tags",
+     "text": "ki, produktivität, ki, demo"
+    }
+   ]
+  },
+  {
+   "id": "bereit-downloads",
+   "titel": "Download-Ordner aufräumen mit einem Satz",
+   "untertitel": "Ausgedachtes Beispielvideo",
+   "take": "Take 1",
+   "stage": "bereit",
+   "datum": "2026-10-20",
+   "dauer": "31 s",
+   "bild": "media_packages/bereit-downloads.jpg",
+   "video": "media_packages/bereit-downloads.mp4",
+   "texte": [
+    {
+     "name": "TikTok-Caption",
+     "text": "Was würdest du zuerst automatisieren? 👇\n\n#ki #produktivität #downloads"
+    },
+    {
+     "name": "Angepinnter Kommentar",
+     "text": "Welches Tool fehlt hier? Schreib es in die Kommentare."
+    },
+    {
+     "name": "YouTube-Titel",
+     "text": "Download-Ordner aufräumen mit einem Satz"
+    },
+    {
+     "name": "YouTube-Beschreibung",
+     "text": "Beispieltext aus den Demodaten des Content Command Center."
+    },
+    {
+     "name": "YouTube-Tags",
+     "text": "ki, produktivität, downloads, demo"
+    }
+   ]
+  },
+  {
+   "id": "schnitt-thumbnail",
+   "titel": "Der eine Prompt für bessere Thumbnails",
+   "untertitel": "Ausgedachtes Beispielvideo",
+   "take": "Upload",
+   "stage": "schnitt",
+   "datum": "2026-10-20",
+   "dauer": "19 s",
+   "bild": "media_packages/schnitt-thumbnail.jpg",
+   "video": "media_packages/schnitt-thumbnail.mp4",
+   "texte": [
+    {
+     "name": "TikTok-Caption",
+     "text": "Was würdest du zuerst automatisieren? 👇\n\n#ki #produktivität #thumbnail"
+    },
+    {
+     "name": "Angepinnter Kommentar",
+     "text": "Welches Tool fehlt hier? Schreib es in die Kommentare."
+    },
+    {
+     "name": "YouTube-Titel",
+     "text": "Der eine Prompt für bessere Thumbnails"
+    },
+    {
+     "name": "YouTube-Beschreibung",
+     "text": "Beispieltext aus den Demodaten des Content Command Center."
+    },
+    {
+     "name": "YouTube-Tags",
+     "text": "ki, produktivität, thumbnail, demo"
+    }
+   ]
+  },
+  {
+   "id": "roh-kaffee",
+   "titel": "Dein Kaffee wird kalt",
+   "untertitel": "Wird automatisch geschnitten",
+   "take": "Upload",
+   "stage": "aufgenommen",
+   "datum": "2026-10-22",
+   "bild": "media_packages/roh-kaffee.jpg",
+   "roh": "media_packages/roh-kaffee_rohschnitt.mp4",
+   "texte": []
+  },
+  {
+   "id": "skript-wochenplan",
+   "titel": "Wochenplan in 60 Sekunden",
+   "untertitel": "Skript, noch nicht aufgenommen",
+   "take": "Skript",
+   "stage": "skript",
+   "datum": "2026-10-23",
+   "dauer": "ca. 45 s",
+   "texte": [
+    {
+     "name": "Teleprompter-Sprechtext",
+     "prompter": true,
+     "text": "Sonntagabend, zehn Minuten. Ich sage meinem Agenten, was diese Woche wichtig ist. Er baut daraus einen Plan und erinnert mich nur, wenn etwas fällig ist. Kein Abo-Tool, nur ein Board auf meinem Rechner."
+    },
+    {
+     "name": "Regie- & Aufnahme-Hinweise",
+     "text": "Hochformat, Blick in die Kamera, ein Anlauf reicht."
+    }
+   ]
+  }
+ ]
+}

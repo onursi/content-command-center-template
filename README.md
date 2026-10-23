@@ -1,0 +1,143 @@
+# Content Command Center
+
+> **English summary:** A self-hosted content pipeline for short-form creators (TikTok, YouTube Shorts) instead of a paid scheduling tool.
+> A local board (Python standard library + one HTML file) tracks every video from script to live. An MCP server lets Claude Code
+> (or any MCP client) read and update the board. A small trigger watches the board without using any AI tokens and only starts
+> `claude -p` when there is real work: a scheduled upload is due, or a raw recording waits to be edited. Edits go through two
+> approval checkpoints in the board. German UI and docs. Ships with fictional demo data.
+
+Eine eigene Content-Pipeline statt Abo-Tool: ein lokales Board, in dem jedes Video vom Skript bis „Live“ wandert,
+und ein MCP-Server, über den Claude Code das Board lesen und bedienen kann. Agenten laufen nur, wenn es wirklich
+etwas zu tun gibt.
+
+![Board mit Demodaten](docs/screenshots/01_board.png)
+
+## Ablauf
+
+```mermaid
+flowchart LR
+    S[Skript<br/>Teleprompter] --> R[Roh<br/>Aufnahme hochladen]
+    R --> A{{Schnitt-Agent<br/>claude -p}}
+    A --> F1[Freigabe 1<br/>Roh-Schnitt + Storyboard]
+    F1 -- Korrektur --> A
+    F1 -- Freigeben --> A2{{Schnitt-Agent<br/>fertiges Video}}
+    A2 --> F2[Freigabe 2<br/>fertiges Video]
+    F2 -- Korrektur --> A2
+    F2 -- Freigeben --> B[Bereit]
+    B --> T[Termin setzen<br/>= dein Ja zum Upload]
+    T --> U{{Upload-Agent<br/>claude -p --chrome}}
+    U --> L[Live<br/>Häkchen + Link]
+    U -- Problem --> E[Fehler im Board<br/>„Erneut versuchen“]
+```
+
+Die Rauten sind Agent-Läufe. Alles andere passiert im Board, auf dem PC oder am Handy.
+
+## Was es kann
+
+| Bereich | Funktion |
+|---|---|
+| **Board** | Fünf Stufen (Skript → Roh → Schnitt → Bereit → Live), Karten mit Cover, Detailblatt, Handy-Ansicht mit Reitern, als Web-App installierbar |
+| **Skript** | Texte je Video (Caption, Titel, Beschreibung, Tags, Sprechtext), Teleprompter mit einstellbarer Schrift, 1-Klick-Kopieren, eigene Fassungen ohne das Original zu verlieren |
+| **Ideen** | Ideenspeicher mit Diktat (Web Speech API) |
+| **Rohaufnahme** | Upload direkt aus dem Board (auch vom Handy, gestreamt, bis 8 GB), mehrere Anläufe pro Video |
+| **Schnitt-Agent** | Zwei Freigaben im Board: Roh-Schnitt + Storyboard, dann fertiges Video. Korrekturen als Text, der Agent setzt nur diese um |
+| **Planen** | Datum, Uhrzeit, Plattformen. Ein Termin ist das Ja zum Hochladen. Knopf „Jetzt posten“ |
+| **Upload-Agent** | Lädt fällige Videos hoch (Claude in Chrome oder Composio), prüft Kanal und Konto, hakt erst nach Sichtprüfung ab |
+| **Fehlerweg** | Sperre gegen Doppel-Uploads (45 Min.), Fehler rot auf der Karte, erneuter Versuch erst nach deinem Klick |
+| **MCP** | 22 Werkzeuge für Claude Code, z. B. `board_uebersicht`, `faellige_uploads`, `einplanen`, `schnitt_auftraege`, `video_vorlegen` |
+| **Agent-Auslöser** | Prüft ohne KI (0 Tokens), ob Arbeit da ist. Wird bei jeder Board-Änderung geweckt, sonst einmal pro Minute |
+
+<table><tr>
+<td><img src="docs/screenshots/02_freigabe_rohschnitt.png" alt="Freigabe Roh-Schnitt"></td>
+<td><img src="docs/screenshots/04_planen_texte.png" alt="Planen und Texte"></td>
+</tr><tr>
+<td align="center">Freigabe 1: Roh-Schnitt und Storyboard</td>
+<td align="center">Planen, Texte kopieren</td>
+</tr></table>
+
+## Warum ein Auslöser statt Zeitplan?
+
+Eine Routine, die alle 30 Minuten einen Agenten startet, endet meist mit „nichts fällig“ und kostet trotzdem jedes Mal eine
+volle KI-Sitzung. Hier prüft ein kleiner Python-Thread den Stand ohne KI. Erst wenn ein Termin erreicht ist oder ein Schnitt
+wartet, startet er `claude -p` mit dem passenden Auftrag aus `geplante-aufgaben/`. Pro Art läuft höchstens ein Agent, nach
+einem Lauf gilt eine Pause (Standard 10 Minuten), die eine Änderung im Board aufhebt.
+
+## Einrichtung
+
+**Schnell:** Öffne Claude Code in diesem Ordner und kopiere den Text aus [`AGENT-SETUP.md`](AGENT-SETUP.md) hinein.
+Der Agent richtet alles ein und fragt nach, was er wissen muss.
+
+**Von Hand:**
+
+1. **Voraussetzungen:** Python 3.10+, [Claude Code](https://docs.claude.com/en/docs/claude-code), optional ffmpeg (Thumbnails aus PNG/WebP, Schnitt).
+2. **Abhängigkeit installieren:**
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+3. **Einstellungen:** `config.example.json` nach `config.json` kopieren und anpassen (Anzeigename, Kanalnamen, Medienordner).
+   Optional `.env.example` nach `.env` kopieren (Port, Agent an/aus). Beide Dateien bleiben lokal.
+4. **Board starten:**
+   ```bash
+   python server.py
+   ```
+   Dann http://127.0.0.1:8899 öffnen. Beim ersten Start werden die Demodaten aus `demo/` übernommen.
+   Im Hintergrund ohne Fenster: `start.cmd` (Windows) oder `./start.sh` (macOS/Linux).
+5. **MCP bei Claude Code anmelden** (absoluten Pfad einsetzen):
+   ```bash
+   claude mcp add --scope user kommandozentrale -- python /voller/pfad/zu/mcp_server.py
+   ```
+   Prüfen: `claude mcp list` zeigt `kommandozentrale` als verbunden.
+6. **Testen** (Board muss laufen):
+   ```bash
+   python mcp_test.py
+   ```
+   Endet mit `ALLES OK`. Der Test ändert nur den Demo-Eintrag „skript-wochenplan“ und setzt ihn zurück.
+7. **Agenten einschalten** (erst, wenn die Aufträge passen): Lies `geplante-aufgaben/upload.md` und `schnitt.md`,
+   passe sie an deinen Ablauf an und setze in `config.json` `"agent": {"aktiv": true}`. Server neu starten.
+
+### Eigene Videos eintragen
+
+Inhalte stehen in `data.json` (Liste `items`), dein Stand aus dem Board in `state.json`. Ein Eintrag:
+
+```json
+{ "id": "mein-video", "titel": "…", "untertitel": "…", "take": "Take 1", "stage": "skript",
+  "bild": "media_packages/cover.jpg", "video": "media_packages/fertig.mp4",
+  "texte": [{ "name": "TikTok-Caption", "text": "…" }, { "name": "Teleprompter-Sprechtext", "text": "…", "prompter": true }] }
+```
+
+`media_packages/…` zeigt auf den Ordner, den du in `config.json` unter `medien.media_packages` einträgst.
+Stufen: `skript`, `aufgenommen` (= Roh), `schnitt`, `bereit`, `live`. Videos aus dem Upload-Knopf legt der Server selbst an.
+
+## Aufbau
+
+| Datei | Aufgabe |
+|---|---|
+| `server.py` | Liefert das Board aus, streamt Videos, speichert den Stand, nimmt Uploads an. Nur Standardbibliothek |
+| `index.html` | Die ganze Oberfläche, ohne Build-Schritt |
+| `mcp_server.py` | MCP „kommandozentrale“ (offizielles `mcp`-SDK, stdio). Spricht über HTTP mit dem laufenden Server |
+| `agent_ausloeser.py` | Thread im Server: prüft ohne KI und startet `claude -p` nur bei Arbeit |
+| `einstellungen.py` | Liest `config.example.json`, `config.json` und `.env` |
+| `geplante-aufgaben/*.md` | Aufträge für Upload- und Schnitt-Agent. Platzhalter wie `{{YOUTUBE_KANAL}}` kommen aus `config.json` |
+| `demo/` | Ausgedachte Beispielvideos und `erzeugen.py`, das sie neu baut |
+
+## Ehrliche Grenzen
+
+- **Der Auslöser startet `claude -p` ohne Rückfragen.** In `config.example.json` steht dafür `--dangerously-skip-permissions`.
+  Der Agent darf dann alles, was dein Claude Code darf. Darum ist der Auslöser standardmäßig **aus**. Lies die Aufträge,
+  bevor du ihn einschaltest, und lass ihn in einem Ordner arbeiten, in dem nichts Wichtiges kaputtgehen kann.
+  Jeder Lauf kostet Tokens deines Claude-Kontos.
+- **TikTok-API:** Ohne App-Prüfung durch TikTok gibt es kein öffentliches Posten über die Schnittstelle. Über Composio
+  (`TIKTOK_UPLOAD_VIDEO`, `publish: false`) landet das Video nur im TikTok-Eingang, die Caption muss man in der App einsetzen.
+- **YouTube-API:** Uploads über die Schnittstelle zählen gegen ein Tageskontingent. Ist es aufgebraucht, scheitert der Upload bis zum nächsten Tag.
+- **Claude in Chrome:** Der Browser-Weg braucht ein offenes Chrome mit der Erweiterung und angemeldeten Konten.
+  Das Datei-Werkzeug nimmt höchstens etwa 10 MB; größere Videos meldet der Agent als Fehler, statt sie zu komprimieren.
+  Oberflächen von TikTok und YouTube ändern sich, dann muss der Auftrag angepasst werden.
+- **Schnitt-Agent:** Der mitgelieferte Auftrag ist ein Gerüst. Gute Ergebnisse brauchen deine eigenen Regeln (Stil, Grafik, Untertitel),
+  einen Transkribierer wie faster-whisper und Rechenleistung. Er legt nur vor, gibt nie selbst frei und postet nie.
+- **Kein Login im Board.** Der Server hört standardmäßig nur auf `127.0.0.1`. Fürs Handy einen privaten Tunnel nutzen
+  (z. B. Tailscale), nie offen ins Internet stellen.
+- Einzelnutzer-Werkzeug, getestet unter Windows 11 mit Python 3.12. macOS/Linux sollten laufen, sind aber weniger erprobt.
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE).

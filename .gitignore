@@ -1,0 +1,22 @@
+# Laufzeit und Protokolle
+*.log
+__pycache__/
+*.tmp
+*.part
+agent-laeufe/
+AUSLOESER-AUS
+
+# Eigene Inhalte und Einstellungen (bleiben lokal)
+data.json
+state.json
+config.json
+arbeit/
+!demo/data.json
+!demo/state.json
+
+# Zugangsdaten (dürfen hier nie liegen)
+.env
+.env.*
+!.env.example
+*.key
+*.pem

@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Command Center" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#141416" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+<link rel="shortcut icon" href="favicon.ico" />
+<title>Content Command Center</title>
+<!-- Oberfläche. Inhalte stehen in data.json, der Stand (Stufen, Häkchen, Ideen) in state.json über /api/state. -->
+<style>
+@font-face { font-family: "Geist"; src: url("fonts/geist-400-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-500-latin.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-600-latin.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-700-latin.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-400-latin-ext.woff2") format("woff2"); font-weight: 400; unicode-range: U+0100-024F, U+1E00-1EFF; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-600-latin-ext.woff2") format("woff2"); font-weight: 600; unicode-range: U+0100-024F, U+1E00-1EFF; }
+
+:root {
+  color-scheme: dark;
+  --grund: #141416;
+  --flaeche: #1C1C1E;
+  --karte: #222225;
+  --karte-hover: #29292D;
+  --kante: rgba(255,255,255,.07);
+  --kante-stark: rgba(255,255,255,.13);
+  --text: #F5F0EA;
+  --still: #A39C94;
+  --leise: #6F6A65;
+  --akzent: #E9A06B;
+  --akzent-tief: #C9763F;
+  --akzent-flaeche: rgba(233,160,107,.12);
+  --gruen: #5BD27A;
+  --gruen-flaeche: rgba(91,210,122,.13);
+  --radius: 14px;
+  --schatten: 0 18px 50px rgba(0,0,0,.45);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--grund); color: var(--text);
+  font: 400 15px/1.5 "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; letter-spacing: -.005em;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1480px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Kopf */
+header { position: sticky; top: 0; z-index: 20; background: rgba(20,20,22,.86); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border-bottom: 1px solid var(--kante); padding-top: env(safe-area-inset-top, 0px); }
+.kopf { display: flex; align-items: center; gap: 16px; padding-block: 14px; }
+.marke { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.marke-punkt { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(145deg, var(--akzent), var(--akzent-tief)); box-shadow: 0 0 24px rgba(233,160,107,.35); display: grid; place-items: center; flex: none; }
+.marke-punkt svg { width: 16px; height: 16px; }
+.marke h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.marke small { display: block; font-size: 12px; color: var(--still); font-weight: 500; margin-top: -2px; }
+.kennzahlen { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.kz { display: flex; align-items: baseline; gap: 6px; padding: 6px 12px; border-radius: 99px; background: var(--flaeche); border: 1px solid var(--kante); font-size: 13px; color: var(--still); white-space: nowrap; }
+.kz b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.kz.akzent b { color: var(--akzent); }
+.kz.gruen b { color: var(--gruen); }
+.knopf { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 15px; border-radius: 11px; font-weight: 600; font-size: 14px; background: var(--flaeche); border: 1px solid var(--kante-stark); transition: background .15s, border-color .15s, transform .1s; white-space: nowrap; }
+.knopf:hover { background: var(--karte-hover); }
+.knopf:active { transform: scale(.97); }
+.knopf.primaer { background: var(--akzent); border-color: var(--akzent); color: #1C1C1E; }
+.knopf.primaer:hover { background: #F0AE7E; }
+.knopf svg { width: 16px; height: 16px; flex: none; }
+.sync { width: 8px; height: 8px; border-radius: 50%; background: var(--gruen); box-shadow: 0 0 10px var(--gruen); flex: none; }
+.sync.aus { background: #E5A443; box-shadow: 0 0 10px #E5A443; }
+
+/* Stufen-Reiter (Handy) */
+.reiter { display: none; gap: 6px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+.reiter::-webkit-scrollbar { display: none; }
+.reiter button { flex: none; display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 99px; font-size: 13.5px; font-weight: 600; color: var(--still); background: var(--flaeche); border: 1px solid var(--kante); }
+.reiter button span { font-variant-numeric: tabular-nums; color: var(--leise); font-weight: 600; }
+.reiter button.an { color: #1C1C1E; background: var(--text); border-color: var(--text); }
+.reiter button.an span { color: #6F6A65; }
+
+/* Tafel */
+main { padding-block: 20px 60px; }
+.tafel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.spalte { background: rgba(255,255,255,.018); border: 1px solid var(--kante); border-radius: 18px; padding: 12px; min-width: 0; }
+.spalte-kopf { display: flex; align-items: center; gap: 9px; padding: 2px 4px 12px; }
+.spalte-kopf i { width: 8px; height: 8px; border-radius: 50%; background: var(--leise); flex: none; }
+.spalte[data-stage="schnitt"] .spalte-kopf i { background: #8FA7FF; }
+.spalte[data-stage="bereit"] .spalte-kopf i { background: var(--akzent); box-shadow: 0 0 10px var(--akzent); }
+.spalte[data-stage="live"] .spalte-kopf i { background: var(--gruen); }
+.spalte-kopf h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--still); }
+.spalte-kopf span { margin-left: auto; font-size: 12.5px; color: var(--leise); font-variant-numeric: tabular-nums; }
+.spalte-inhalt { display: flex; flex-direction: column; gap: 8px; }
+.leer { padding: 18px 8px; text-align: center; color: var(--leise); font-size: 13px; }
+
+/* Karte */
+.karte { position: relative; display: flex; gap: 12px; padding: 10px; border-radius: var(--radius); background: var(--karte); border: 1px solid var(--kante); cursor: pointer; transition: background .15s, border-color .15s, transform .15s; text-align: left; width: 100%; }
+.karte:hover { background: var(--karte-hover); border-color: var(--kante-stark); }
+.karte.bereit { border-color: rgba(233,160,107,.35); box-shadow: inset 0 0 0 1px rgba(233,160,107,.08); }
+.karte:focus { outline: none; }
+.karte:focus-visible, .knopf:focus-visible, button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.karte.neu { animation: rein .45s cubic-bezier(.2,.8,.2,1); }
+@keyframes rein { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.bild { flex: none; width: 50px; aspect-ratio: 9/16; border-radius: 8px; background: #2C2C30 center/cover no-repeat; position: relative; overflow: hidden; }
+.bild.skript { display: grid; place-items: center; background: linear-gradient(160deg, #2E2B29, #232325); }
+.bild.skript svg { width: 20px; height: 20px; opacity: .7; }
+.karte-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.take { font-size: 11.5px; font-weight: 600; color: var(--leise); letter-spacing: .03em; text-transform: uppercase; }
+.karte-titel { font-size: 14.5px; font-weight: 600; line-height: 1.25; letter-spacing: -.01em; text-wrap: balance; }
+.karte-sub { font-size: 12.5px; color: var(--still); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.karte-fuss { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 8px; flex-wrap: wrap; }
+.plattform { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 7px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--still); background: rgba(255,255,255,.05); border: 1px solid var(--kante); transition: all .15s; }
+.plattform .box { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--leise); display: grid; place-items: center; transition: all .15s; }
+.plattform .box svg { width: 10px; height: 10px; opacity: 0; }
+.plattform:hover { border-color: var(--kante-stark); color: var(--text); }
+.plattform.an { color: var(--gruen); background: var(--gruen-flaeche); border-color: rgba(91,210,122,.3); }
+.plattform.an .box { background: var(--gruen); border-color: var(--gruen); }
+.plattform.an .box svg { opacity: 1; }
+.weiter { margin-left: auto; height: 26px; padding: 0 9px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--still); border: 1px solid var(--kante); display: inline-flex; align-items: center; gap: 4px; }
+.weiter:hover { color: var(--akzent); border-color: rgba(233,160,107,.4); }
+.weiter svg { width: 12px; height: 12px; }
+.chip { font-size: 11.5px; color: var(--leise); font-variant-numeric: tabular-nums; }
+
+/* Seitenblatt */
+.schleier { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.55); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.schleier.offen { opacity: 1; pointer-events: auto; }
+.blatt { position: fixed; z-index: 41; top: 0; right: 0; bottom: 0; width: min(620px, 100%); background: var(--flaeche); border-left: 1px solid var(--kante-stark); box-shadow: var(--schatten); transform: translateX(104%); transition: transform .28s cubic-bezier(.2,.8,.2,1); display: flex; flex-direction: column; }
+.blatt.offen { transform: none; }
+.blatt-kopf { display: flex; align-items: flex-start; gap: 12px; padding: calc(18px + env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-right, 0px)) 14px 22px; border-bottom: 1px solid var(--kante); }
+.blatt-kopf h3 { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
+.blatt-kopf p { margin: 3px 0 0; color: var(--still); font-size: 13.5px; }
+.zu { margin-left: auto; flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.05); }
+.zu:hover { background: rgba(255,255,255,.1); }
+.zu svg { width: 16px; height: 16px; }
+.blatt-inhalt { overflow-y: auto; padding: 18px max(22px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) 22px; display: flex; flex-direction: column; gap: 20px; }
+.oben { display: grid; grid-template-columns: 170px minmax(0,1fr); gap: 18px; align-items: start; }
+.player { width: 170px; aspect-ratio: 9/16; border-radius: 12px; background: #000 center/cover; overflow: hidden; border: 1px solid var(--kante); }
+.player video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.status { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.label { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--leise); margin-bottom: 7px; }
+.stufen { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: rgba(0,0,0,.25); padding: 4px; border-radius: 11px; border: 1px solid var(--kante); }
+.stufen button { height: 32px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--still); }
+.stufen button:hover { color: var(--text); }
+.stufen button.an { background: var(--text); color: #1C1C1E; }
+.schalter-liste { display: flex; flex-direction: column; gap: 6px; }
+.schalter { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border-radius: 11px; background: var(--karte); border: 1px solid var(--kante); text-align: left; transition: all .15s; }
+.schalter:hover { border-color: var(--kante-stark); }
+.schalter .box { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--leise); display: grid; place-items: center; flex: none; transition: all .15s; }
+.schalter .box svg { width: 13px; height: 13px; opacity: 0; }
+.schalter.an { background: var(--gruen-flaeche); border-color: rgba(91,210,122,.3); }
+.schalter.an .box { background: var(--gruen); border-color: var(--gruen); }
+.schalter.an .box svg { opacity: 1; }
+.schalter b { font-weight: 600; font-size: 14px; }
+.schalter small { margin-left: auto; color: var(--still); font-size: 12.5px; }
+.schalter.an small { color: var(--gruen); }
+.aktionen { display: flex; flex-wrap: wrap; gap: 8px; }
+.aktionen .knopf { height: 36px; font-size: 13.5px; }
+.hinweis { padding: 11px 13px; border-radius: 11px; background: var(--akzent-flaeche); border: 1px solid rgba(233,160,107,.22); font-size: 13.5px; line-height: 1.45; }
+.texte { display: flex; flex-direction: column; gap: 6px; }
+.text-zeile { border-radius: 11px; background: var(--karte); border: 1px solid var(--kante); overflow: hidden; }
+.text-kopf { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 13px; }
+.text-kopf b { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; }
+.text-kopf button { height: 30px; padding: 0 11px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--still); background: rgba(255,255,255,.05); }
+.text-kopf button:hover { color: var(--text); background: rgba(255,255,255,.09); }
+.text-kopf button.kopieren { color: var(--akzent); }
+.text-voll { display: none; padding: 2px 13px 13px; font-size: 13.5px; line-height: 1.6; color: #DCD6CF; white-space: pre-wrap; overflow-wrap: anywhere; }
+.text-zeile.offen .text-voll { display: block; }
+.text-vorschau { padding: 0 13px 10px; font-size: 12.5px; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.text-zeile.offen .text-vorschau { display: none; }
+.pfad { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; background: rgba(0,0,0,.22); border: 1px solid var(--kante); font-size: 12.5px; color: var(--still); }
+.pfad code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.pfad button { color: var(--akzent); font-weight: 600; font-size: 12.5px; flex: none; }
+.termin { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--akzent); background: var(--akzent-flaeche); border-radius: 7px; padding: 3px 8px; }
+.termin.auto-chip { color: #8FA7FF; background: rgba(143,167,255,.12); }
+.termin.auto-chip.du { color: #1C1C1E; background: var(--akzent); }
+.auto { display: flex; flex-direction: column; gap: 10px; padding: 13px; border-radius: 14px; background: rgba(143,167,255,.07); border: 1px solid rgba(143,167,255,.28); }
+.auto.du { background: var(--akzent-flaeche); border-color: rgba(233,160,107,.45); }
+.auto h4 { margin: 0; font-size: 14.5px; font-weight: 700; }
+.auto p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #DCD6CF; }
+.auto .medien { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 10px; align-items: start; }
+.auto video { width: 150px; aspect-ratio: 9/16; border-radius: 10px; background: #000; }
+.auto img { width: 100%; border-radius: 10px; border: 1px solid var(--kante); cursor: zoom-in; }
+.auto textarea { min-height: 70px; font-size: 13.5px; }
+.auto .reihe { display: flex; gap: 8px; flex-wrap: wrap; }
+.auto small { color: var(--still); font-size: 12px; }
+.fortschritt { height: 8px; border-radius: 99px; background: var(--flaeche); overflow: hidden; }
+.fortschritt i { display: block; height: 100%; width: 0; background: var(--akzent); transition: width .2s; }
+@media (max-width: 760px) { .auto .medien { grid-template-columns: 1fr; } .auto video { width: 100%; max-width: 260px; } }
+.termin.fehler-chip { color: #ff8a80; background: rgba(255,138,128,.12); }
+.fehler-box { display: flex; flex-direction: column; gap: 6px; padding: 11px 13px; border-radius: 12px; background: rgba(255,138,128,.08); border: 1px solid rgba(255,138,128,.35); margin-bottom: 6px; }
+.fehler-box b { color: #ff8a80; font-size: 13.5px; }
+.fehler-box p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.fehler-box small { color: var(--still); font-size: 12px; }
+.fehler-box .knopf { align-self: flex-start; height: 34px; font-size: 13px; }
+.plan { display: flex; flex-direction: column; gap: 9px; padding: 12px; border-radius: 12px; background: var(--karte); border: 1px solid var(--kante); }
+.plan input[type=datetime-local] { height: 38px; padding: 0 11px; border-radius: 10px; background: var(--flaeche); border: 1px solid var(--kante-stark); color: var(--text); font: inherit; font-size: 14px; color-scheme: dark; }
+.plan-plattformen { display: flex; gap: 14px; font-size: 14px; }
+.plan-plattformen label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.plan-plattformen input { accent-color: var(--akzent); width: 16px; height: 16px; }
+.plan-knoepfe { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.plan-knoepfe small { flex: 1; min-width: 140px; color: var(--still); font-size: 12.5px; }
+.plan-knoepfe .knopf { height: 34px; font-size: 13px; }
+.zaehler { font-size: 11.5px; font-weight: 700; color: var(--still); background: rgba(255,255,255,.08); border-radius: 999px; padding: 1px 7px; }
+.zaehler:empty { display: none; }
+.text-kopf .marke-neu { flex: none; font-size: 11px; font-weight: 700; color: var(--akzent); background: var(--akzent-flaeche); border-radius: 6px; padding: 2px 6px; }
+.text-edit { padding: 2px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+.text-edit textarea { min-height: 140px; font-size: 13.5px; }
+.text-edit div { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.verworfen-zeile { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--karte); border: 1px solid var(--kante); }
+.verworfen-zeile .bild { width: 42px; }
+.verworfen-zeile div.t { flex: 1; min-width: 0; }
+.verworfen-zeile b { display: block; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verworfen-zeile small { color: var(--leise); font-size: 12px; }
+.verworfen-zeile .knopf { height: 32px; font-size: 12.5px; flex: none; }
+
+/* Ideen */
+.ideen-eingabe { display: flex; flex-direction: column; gap: 10px; }
+textarea { width: 100%; min-height: 96px; resize: vertical; padding: 12px 13px; border-radius: 12px; background: var(--karte); border: 1px solid var(--kante-stark); color: var(--text); font: inherit; font-size: 14.5px; line-height: 1.5; }
+textarea:focus { outline: none; border-color: rgba(233,160,107,.55); box-shadow: 0 0 0 3px rgba(233,160,107,.12); }
+.ideen-knoepfe { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.aufnahme.laeuft { background: #D84B42; border-color: #D84B42; color: #fff; }
+.zeit { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--still); }
+.idee { padding: 11px 12px 11px 13px; border-radius: 11px; background: var(--karte); border: 1px solid var(--kante); display: flex; gap: 10px; align-items: flex-start; }
+.idee p { margin: 0; flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.idee small { display: block; color: var(--leise); font-size: 11.5px; margin-top: 4px; }
+.idee button { flex: none; color: var(--leise); font-size: 12.5px; font-weight: 600; padding: 4px 6px; border-radius: 6px; }
+.idee button:hover { color: var(--text); background: rgba(255,255,255,.06); }
+
+/* Teleprompter */
+.prompter { position: fixed; inset: 0; z-index: 60; background: #0B0B0C; display: none; flex-direction: column; }
+.prompter.offen { display: flex; }
+.prompter-kopf { display: flex; gap: 8px; align-items: center; padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--kante); }
+.prompter-kopf b { flex: 1; color: var(--akzent); font-weight: 600; }
+.prompter-text { flex: 1; overflow-y: auto; padding: 8vh max(6vw, 16px) 40vh; font-size: 40px; line-height: 1.45; font-weight: 600; letter-spacing: -.01em; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+.toast { position: fixed; z-index: 70; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; padding: 11px 18px; border-radius: 12px; background: var(--text); color: #1C1C1E; font-weight: 600; font-size: 14px; box-shadow: var(--schatten); transition: all .25s cubic-bezier(.2,.8,.2,1); pointer-events: none; white-space: nowrap; }
+.toast.zeigen { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1180px) {
+  .tafel { grid-template-columns: repeat(5, minmax(250px, 1fr)); overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .spalte { scroll-snap-align: start; }
+}
+@media (max-width: 760px) {
+  .reiter { display: flex; }
+  .kz:not(.akzent) { display: none; }
+  .marke small { display: none; }
+  .tafel { display: block; overflow: visible; }
+  .spalte { display: none; background: none; border: 0; padding: 0; }
+  .spalte.sichtbar { display: block; }
+  .spalte-kopf { display: none; }
+  .karte { padding: 12px; }
+  .bild { width: 58px; }
+  .karte-titel { font-size: 15.5px; }
+  .plattform, .weiter { height: 32px; font-size: 13px; padding: 0 11px 0 9px; }
+  .blatt { top: auto; width: 100%; height: 92vh; height: 92dvh; border-left: 0; border-top: 1px solid var(--kante-stark); border-radius: 22px 22px 0 0; transform: translateY(104%); }
+  .blatt-kopf { padding-top: 18px; }
+  .oben { grid-template-columns: 118px minmax(0,1fr); gap: 14px; }
+  .player { width: 118px; }
+  .stufen button { font-size: 11.5px; }
+  .prompter-text { font-size: 30px; }
+  .knopf-text-lang { display: none; }
+  .kopf { gap: 8px; }
+  .kopf > .knopf { padding: 0 10px; gap: 5px; }
+  .marke h1 { overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 420px) {
+  .kennzahlen .kz { padding: 6px 9px; }
+  .marke h1 { font-size: 15.5px; }
+}
+@media (max-width: 370px) {
+  .marke-punkt { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kopf">
+      <div class="marke">
+        <div class="marke-punkt"><svg viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg></div>
+        <div><h1>Command Center</h1><small id="anzeigename">Content-Pipeline</small></div>
+      </div>
+      <div class="kennzahlen">
+        <div class="kz akzent"><b id="kzBereit">0</b> bereit</div>
+        <div class="kz"><b id="kzSchnitt">0</b> im Schnitt</div>
+        <div class="kz gruen"><b id="kzLive">0</b> live</div>
+        <span class="sync" id="sync" title="Mit dem PC synchronisiert"></span>
+      </div>
+      <button class="knopf" onclick="ideenOeffnen()" aria-label="Ideen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <span class="knopf-text-lang">Ideen</span>
+      </button>
+      <button class="knopf primaer" onclick="uploadOeffnen()" aria-label="Rohaufnahme hochladen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+        <span class="knopf-text-lang">Rohaufnahme</span>
+      </button>
+      <button class="knopf" onclick="verworfenOeffnen()" aria-label="Verworfen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg>
+        <span class="knopf-text-lang">Verworfen</span><span class="zaehler" id="kzVerworfen"></span>
+      </button>
+    </div>
+    <nav class="reiter" id="reiter"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="tafel" id="tafel"></div>
+</main>
+
+<div class="schleier" id="schleier" onclick="blattZu()"></div>
+<aside class="blatt" id="blatt" aria-hidden="true">
+  <div class="blatt-kopf">
+    <div style="min-width:0"><div class="take" id="blattTake"></div><h3 id="blattTitel"></h3><p id="blattSub"></p></div>
+    <button class="zu" onclick="blattZu()" aria-label="Schließen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="blatt-inhalt" id="blattInhalt"></div>
+</aside>
+
+<div class="prompter" id="prompter">
+  <div class="prompter-kopf">
+    <b id="prompterTitel">Teleprompter</b>
+    <button class="knopf" onclick="schrift(-4)">A−</button>
+    <button class="knopf" onclick="schrift(4)">A+</button>
+    <button class="knopf primaer" onclick="prompterZu()">Fertig</button>
+  </div>
+  <div class="prompter-text" id="prompterText"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STUFEN = [
+  { id: "skript", name: "Skript" },
+  { id: "aufgenommen", name: "Roh" },
+  { id: "schnitt", name: "Schnitt" },
+  { id: "bereit", name: "Bereit" },
+  { id: "live", name: "Live" },
+];
+const PLATTFORMEN = [ { id: "tiktok", name: "TikTok" }, { id: "youtube", name: "YouTube" } ];
+const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const PFEIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+const SKRIPT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#E9A06B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>';
+
+let DATEN = { items: [] };
+let STAND = { items: {}, ideen: [] };
+let reiterAktiv = "bereit";
+let offenId = null;
+let zuletztBewegt = null;
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const url = p => encodeURI(p);
+const $ = id => document.getElementById(id);
+
+function eintrag(it) { return Object.assign({}, it, STAND.items[it.id] || {}); }
+// entfernt: true (in state.json) blendet ein Video überall aus; data.json bleibt unverändert
+function alle() { return DATEN.items.map(eintrag).filter(it => !it.entfernt); }
+
+/* ---------- Laden und Speichern ---------- */
+async function laden() {
+  try { DATEN = await (await fetch("data.json", { cache: "no-store" })).json(); }
+  catch (e) { $("tafel").innerHTML = '<div class="leer">data.json konnte nicht geladen werden. Das Tool über die Verknüpfung „Content Command Center“ öffnen, nicht als Datei.</div>'; return; }
+  await standHolen();
+  try { reiterAktiv = localStorage.getItem("ccc_reiter") || reiterAktiv; } catch (e) {}
+  zeichnen();
+}
+async function standHolen() {
+  try {
+    const r = await fetch("api/state", { cache: "no-store" });
+    if (!r.ok) throw 0;
+    const s = await r.json();
+    STAND = { items: s.items || {}, ideen: s.ideen || [] };
+    syncAnzeige(true);
+  } catch (e) {
+    try { STAND = JSON.parse(localStorage.getItem("ccc_stand")) || STAND; } catch (e2) {}
+    syncAnzeige(false);
+  }
+}
+async function speichern() {
+  try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
+  try {
+    const r = await fetch("api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(STAND) });
+    syncAnzeige(r.ok);
+  } catch (e) { syncAnzeige(false); }
+}
+function syncAnzeige(ok) { const s = $("sync"); s.classList.toggle("aus", !ok); s.title = ok ? "Gespeichert, auf Handy und PC gleich" : "Nur in diesem Browser gespeichert (Server nicht erreichbar)"; }
+// Einzelne Felder zusammenführen statt den ganzen Stand zu senden: so überschreibt die Seite keine Änderungen des MCP
+async function setzen(id, aenderung) {
+  STAND.items[id] = Object.assign({}, STAND.items[id] || {}, aenderung);
+  try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
+  try {
+    const r = await fetch("api/item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, set: aenderung }) });
+    syncAnzeige(r.ok);
+  } catch (e) { syncAnzeige(false); }
+}
+async function ideenSpeichern() {
+  try { localStorage.setItem("ccc_stand", JSON.stringify(STAND)); } catch (e) {}
+  try { const r = await fetch("api/ideen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ideen: STAND.ideen }) }); syncAnzeige(r.ok); }
+  catch (e) { syncAnzeige(false); }
+}
+
+/* ---------- Pipeline-Logik ---------- */
+function plattformUmschalten(id, p, ev) {
+  if (ev) ev.stopPropagation();
+  const it = eintrag(DATEN.items.find(x => x.id === id));
+  const neu = { [p]: !it[p] };
+  if (neu[p] && it.fehler && it.fehler[p]) neu.fehler = ohne(it.fehler, p);   // von Hand gepostet: Fehler erledigt
+  const nachher = Object.assign({}, it, neu);
+  const alleDrauf = PLATTFORMEN.every(x => nachher[x.id]);
+  // Live geht auch mit nur einer Plattform: ein entfernter Haken schiebt nichts mehr zurück
+  if (alleDrauf && it.stage !== "live") { neu.stage = "live"; zuletztBewegt = id; toast("Live auf allen Plattformen. Verschoben nach Live."); }
+  else toast(nachher[p] ? PLATTFORMEN.find(x => x.id === p).name + " abgehakt" : "Haken entfernt");
+  setzen(id, neu); zeichnen();
+}
+function stufeSetzen(id, stage, ev) {
+  if (ev) ev.stopPropagation();
+  const neu = { stage };
+  if (stage !== "live" && stage !== "bereit") PLATTFORMEN.forEach(p => neu[p.id] = false);
+  // Live setzt keine Häkchen mehr automatisch: abgehakt wird nur, was wirklich gepostet ist
+  zuletztBewegt = id;
+  setzen(id, neu);
+  toast("Verschoben nach " + STUFEN.find(s => s.id === stage).name);
+  zeichnen();
+}
+function entfernen(id) {
+  const it = DATEN.items.find(x => x.id === id);
+  if (!confirm(`„${it.titel}“ aus dem Board entfernen?\n\nDas Video verschwindet aus allen Spalten. Dateien und data.json bleiben unverändert.`)) return;
+  setzen(id, { entfernt: true, entfernt_am: new Date().toISOString() });
+  blattZu(); zeichnen();
+  toast("Verworfen: " + it.titel);
+}
+function zurueckholen(id) {
+  const it = DATEN.items.find(x => x.id === id);
+  setzen(id, { entfernt: false });
+  zuletztBewegt = id; zeichnen();
+  if (offenId === id) blattFuellen(id);
+  toast("Zurückgeholt: " + it.titel);
+}
+
+/* ---------- Planen: Termin + Plattformen. Ein Termin gilt als dein Ja zum Hochladen dieses Videos. ---------- */
+function planText(plan) {
+  if (!plan || !plan.zeit) return "";
+  const d = new Date(plan.zeit);
+  return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+function planHtml(it) {
+  if (it.entfernt || !["schnitt", "bereit", "live"].includes(it.stage)) return "";
+  const p = it.plan || {};
+  const offen = PLATTFORMEN.filter(x => (p.plattformen || []).includes(x.id) && !it[x.id]);
+  const status = !p.zeit ? "Kein Termin" : offen.length ? `Geplant: ${planText(p)} · ${offen.map(x => x.name).join(" + ")} offen` : `Geplant: ${planText(p)} · erledigt`;
+  return `<div><div class="label">Planen</div><div class="plan">
+    <input type="datetime-local" id="planZeit" value="${esc(p.zeit || "")}">
+    <div class="plan-plattformen">${PLATTFORMEN.map(x => `<label><input type="checkbox" value="${x.id}" ${(p.plattformen || PLATTFORMEN.map(y => y.id)).includes(x.id) ? "checked" : ""}> ${x.name}</label>`).join("")}</div>
+    <div class="plan-knoepfe"><small>${esc(status)}</small>
+      ${p.zeit ? `<button class="knopf" onclick="planEntfernen('${it.id}')">Termin löschen</button>` : ""}
+      <button class="knopf primaer" onclick="planSpeichern('${it.id}')">${p.zeit ? "Ändern" : "Einplanen"}</button>
+      ${offen.length || !p.zeit ? `<button class="knopf" onclick="jetztPosten('${it.id}')">Jetzt posten</button>` : ""}</div>
+  </div></div>`;
+}
+function planSpeichern(id) {
+  const zeit = $("planZeit").value;
+  const plattformen = [...document.querySelectorAll(".plan-plattformen input:checked")].map(x => x.value);
+  if (!zeit) return toast("Erst Datum und Uhrzeit wählen");
+  if (!plattformen.length) return toast("Mindestens eine Plattform wählen");
+  setzen(id, { plan: { zeit, plattformen, gesetzt_am: new Date().toISOString() } });
+  zeichnen(); toast("Eingeplant: " + planText({ zeit }));
+}
+function jetztPosten(id) {
+  const plattformen = [...document.querySelectorAll(".plan-plattformen input:checked")].map(x => x.value);
+  if (!plattformen.length) return toast("Mindestens eine Plattform wählen");
+  const namen = PLATTFORMEN.filter(x => plattformen.includes(x.id)).map(x => x.name).join(" + ");
+  if (!confirm("Jetzt auf " + namen + " hochladen? Der Upload-Agent startet sofort.")) return;
+  const d = new Date(); d.setSeconds(0, 0);
+  const zeit = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  setzen(id, { plan: { zeit, plattformen, gesetzt_am: new Date().toISOString(), sofort: true } });
+  zeichnen(); toast("Upload-Agent wird gestartet");
+}
+function planEntfernen(id) { setzen(id, { plan: null }); delete STAND.items[id].plan; zeichnen(); toast("Termin gelöscht"); }
+
+/* ---------- Automatischer Schnitt: Rohaufnahme hochladen, Agent schneidet, du gibst im Board frei ---------- */
+const AUTO_TEXT = {
+  hochladen: ["Anläufe werden hochgeladen", "Der Agent startet, sobald alle Dateien da sind.", false],
+  wartet: ["Wartet auf den Agenten", "Der Schnitt-Agent startet automatisch, sobald die Aufnahme da ist.", false],
+  in_arbeit: ["Agent schneidet gerade", "", false],
+  rohschnitt_bereit: ["Deine Freigabe: Roh-Schnitt + Storyboard", "Schau dir den Schnitt und den Grafikplan an. Passt es, tippe Freigeben. Sonst schreib, was anders soll (z. B. „Sekunde 9 und 10 weg“).", true],
+  rohschnitt_ok: ["Freigegeben – Agent baut das fertige Video", "Grafiken, Untertitel, Klang und Musik kommen jetzt dazu.", false],
+  korrektur: ["Korrektur am Roh-Schnitt übergeben", "Der Agent startet sofort, setzt sie um und legt dir den Schnitt neu vor.", false],
+  video_bereit: ["Deine Freigabe: fertiges Video", "Das Video oben ist der fertige Schnitt. Freigeben schiebt es nach Bereit, dann kannst du es einplanen.", true],
+  korrektur_video: ["Korrektur am Video übergeben", "Der Agent startet sofort und setzt sie um.", false],
+  fertig: ["Automatischer Schnitt fertig", "", false],
+  fehler: ["Schnitt-Agent hat ein Problem", "", false],
+};
+function autoChip(it) {
+  const a = it.auto; if (!a || !a.status || a.status === "fertig") return "";
+  const t = AUTO_TEXT[a.status] || [a.status];
+  return `<div class="termin auto-chip ${t[2] ? "du" : ""}">${a.status === "fehler" ? "⚠" : t[2] ? "👉" : "🤖"} ${esc(t[0])}</div>`;
+}
+function autoHtml(it) {
+  const a = it.auto; if (!a || !a.status) return "";
+  const t = AUTO_TEXT[a.status] || [a.status, "", false];
+  const v = a.vorschau || {};
+  let medien = "";
+  if (a.status === "rohschnitt_bereit") medien = `<div class="medien">
+      ${v.rohschnitt ? `<video controls playsinline preload="metadata" src="${url(v.rohschnitt)}"></video>` : "<small>Kein Roh-Schnitt-Video</small>"}
+      ${v.storyboard ? `<a href="${url(v.storyboard)}" target="_blank" rel="noopener"><img src="${url(v.storyboard)}" alt="Storyboard"></a>` : "<small>Kein Storyboard</small>"}</div>`;
+  const notiz = a.notiz ? `<p>${esc(a.notiz)}</p>` : "";
+  const korr = a.korrektur && /korrektur/.test(a.status) ? `<p><b>Deine Korrektur:</b> ${esc(a.korrektur)}</p>` : "";
+  const fehler = a.status === "fehler" ? `<p style="color:#ff8a80">${esc(a.meldung || "")}</p><div class="reihe"><button class="knopf primaer" onclick="autoErneut('${it.id}')">Erneut versuchen</button></div>` : "";
+  const schritt = a.status === "in_arbeit" && a.schritt ? `<p>${esc(a.schritt)}</p>` : "";
+  const aktion = t[2] ? `<textarea id="autoKorrektur" placeholder="Korrektur (optional) …"></textarea>
+      <div class="reihe"><button class="knopf primaer" onclick="autoFreigeben('${it.id}')">Freigeben</button>
+      <button class="knopf" onclick="autoKorrigieren('${it.id}')">Korrektur senden</button></div>` : "";
+  return `<div><div class="label">Automatischer Schnitt</div><div class="auto ${t[2] ? "du" : ""}">
+    <h4>${a.status === "fehler" ? "⚠ " : ""}${esc(t[0])}</h4>${t[1] ? `<p>${esc(t[1])}</p>` : ""}${schritt}${notiz}${korr}${medien}${fehler}${aktion}
+    ${a.seit ? `<small>Stand: ${esc(new Date(a.seit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }))}</small>` : ""}</div></div>`;
+}
+// Ortszeit ohne Zone, wie der Agent sie schreibt (sonst steht der Verlauf durcheinander)
+function ortszeit() { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19); }
+function autoNeu(id, aenderung, eintragDazu) {
+  const alt = (STAND.items[id] || {}).auto || {};
+  const verlauf = (alt.verlauf || []).concat(eintragDazu ? [{ zeit: ortszeit(), ...eintragDazu }] : []);
+  return Object.assign({}, alt, aenderung, { seit: ortszeit(), verlauf });
+}
+function autoFreigeben(id) {
+  const a = (STAND.items[id] || {}).auto || {};
+  const extra = $("autoKorrektur") && $("autoKorrektur").value.trim();
+  if (extra) return autoKorrigieren(id);
+  if (a.status === "rohschnitt_bereit") { setzen(id, { auto: autoNeu(id, { status: "rohschnitt_ok", korrektur: null }, { du: "Roh-Schnitt freigegeben" }) }); toast("Freigegeben – Agent baut weiter"); }
+  else if (a.status === "video_bereit") { setzen(id, { stage: "bereit", auto: autoNeu(id, { status: "fertig", korrektur: null }, { du: "Video freigegeben" }) }); zuletztBewegt = id; toast("Freigegeben – jetzt in Bereit"); }
+  zeichnen();
+}
+function autoKorrigieren(id) {
+  const a = (STAND.items[id] || {}).auto || {};
+  const text = $("autoKorrektur").value.trim();
+  if (!text) return toast("Erst die Korrektur eintippen");
+  const status = a.status === "video_bereit" ? "korrektur_video" : "korrektur";
+  setzen(id, { auto: autoNeu(id, { status, korrektur: text }, { du: "Korrektur: " + text }) });
+  zeichnen(); toast("Korrektur an den Agenten übergeben");
+}
+function autoErneut(id) {
+  const a = (STAND.items[id] || {}).auto || {};
+  setzen(id, { auto: autoNeu(id, { status: a.vorher || "wartet", meldung: null }, { du: "Erneut versuchen" }) });
+  zeichnen(); toast("Wird beim nächsten Lauf erneut versucht");
+}
+function uploadOeffnen() {
+  offenId = "__upload";
+  $("blattTake").textContent = "Automatischer Schnitt";
+  $("blattTitel").textContent = "Rohaufnahme hochladen";
+  $("blattSub").textContent = "Der Agent schneidet automatisch. Roh-Schnitt und Storyboard kommen hier zur Freigabe zurück.";
+  $("blattInhalt").innerHTML = `<div class="ideen-eingabe">
+      <input id="upTitel" placeholder="Titel / Thema (optional)" style="height:42px;padding:0 13px;border-radius:12px;background:var(--karte);border:1px solid var(--kante-stark);color:var(--text);font:inherit;font-size:14.5px">
+      <input id="upDatei" type="file" accept="video/*,.mov,.mp4" multiple style="font-size:14px">
+      <small style="color:var(--still)">Mehrere Anläufe? Alle auf einmal auswählen (Strg gedrückt halten). Der Agent vergleicht sie und nimmt die besten Stellen.</small>
+      <textarea id="upHinweis" placeholder="Hinweis an den Agenten (optional), z. B. „Hook ist der Satz mit der Zahl“"></textarea>
+      <div class="fortschritt"><i id="upBalken"></i></div><small id="upInfo" style="color:var(--still)"></small>
+      <div class="ideen-knoepfe"><button class="knopf primaer" id="upKnopf" style="margin-left:auto" onclick="uploadStarten()">Hochladen</button></div></div>`;
+  $("blatt").classList.add("offen"); $("schleier").classList.add("offen"); $("blatt").setAttribute("aria-hidden", "false");
+}
+/* Mehrere Anläufe (2026-10-21): Dateien nacheinander hochladen, alle hängen an EINEM Video.
+   Der Agent startet erst, wenn alle da sind (Status „hochladen“ → „wartet“). */
+function eineDateiHochladen(f, url, nr, anzahl) {
+  return new Promise((ok, fehler) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", url);
+    x.upload.onprogress = e => { if (e.lengthComputable) { const p = e.loaded / e.total * 100; $("upBalken").style.width = p + "%"; $("upInfo").textContent = `${anzahl > 1 ? `Anlauf ${nr} von ${anzahl}: ` : ""}${(e.loaded / 1048576).toFixed(0)} von ${(e.total / 1048576).toFixed(0)} MB`; } };
+    x.onload = () => x.status === 200 ? ok(JSON.parse(x.responseText)) : fehler(new Error("Upload fehlgeschlagen (" + x.status + ")"));
+    x.onerror = () => fehler(new Error("Upload abgebrochen – Verbindung prüfen"));
+    x.send(f);
+  });
+}
+async function uploadStarten() {
+  const dateien = [...$("upDatei").files]; if (!dateien.length) return toast("Erst eine Videodatei wählen");
+  const titel = $("upTitel").value.trim(), hinweis = $("upHinweis").value.trim();
+  const mehr = dateien.length > 1;
+  $("upKnopf").disabled = true; $("upInfo").textContent = "Lädt hoch …";
+  try {
+    const erste = await eineDateiHochladen(dateien[0], `api/upload?name=${encodeURIComponent(dateien[0].name)}&titel=${encodeURIComponent(titel)}${mehr ? "&mehr=1" : ""}`, 1, dateien.length);
+    for (let i = 1; i < dateien.length; i++)
+      await eineDateiHochladen(dateien[i], `api/upload?name=${encodeURIComponent(dateien[i].name)}&zu=${encodeURIComponent(erste.id)}`, i + 1, dateien.length);
+    await aktualisieren();
+    const auto = Object.assign({}, STAND.items[erste.id].auto);
+    if (hinweis) auto.hinweis = hinweis;
+    if (mehr) { auto.status = "wartet"; auto.anlaeufe = dateien.length; }
+    if (hinweis || mehr) await setzen(erste.id, { auto });
+    toast(mehr ? `${dateien.length} Anläufe hochgeladen – der Agent übernimmt` : "Hochgeladen – der Agent übernimmt");
+    reiterWahl("aufgenommen"); blattAuf(erste.id);
+  } catch (e) { $("upKnopf").disabled = false; toast(e.message); }
+}
+
+/* ---------- Thumbnail austauschen (eigenes Bild, z. B. von Codex) ---------- */
+function thumbnailAendern(id) {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/jpeg,image/png,image/webp";
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const x = new XMLHttpRequest();
+    x.open("POST", `api/bild?id=${encodeURIComponent(id)}&name=${encodeURIComponent(f.name)}`);
+    x.onload = async () => {
+      if (x.status !== 200) return toast("Thumbnail konnte nicht gespeichert werden (" + x.status + ")");
+      await aktualisieren(); if (offenId === id) blattFuellen(id); toast("Neues Thumbnail gespeichert");
+    };
+    x.onerror = () => toast("Upload abgebrochen – Verbindung prüfen");
+    toast("Thumbnail wird hochgeladen …"); x.send(f);
+  };
+  inp.click();
+}
+async function thumbnailZurueck(id) {
+  const vorher = (STAND.items[id] || {}).bild_vorher;
+  await setzen(id, { bild: vorher ? vorher : null, bild_vorher: null });
+  ["bild", "bild_vorher"].forEach(k => { if (STAND.items[id][k] === null) delete STAND.items[id][k]; });
+  zeichnen(); toast("Altes Thumbnail wieder aktiv");
+}
+
+/* ---------- Upload-Fehler vom Agenten ---------- */
+function fehlerHtml(it) {
+  const f = it.fehler || {};
+  if (!Object.keys(f).length) return "";
+  return `<div><div class="label">Upload-Fehler</div>${Object.entries(f).map(([p, v]) => `
+    <div class="fehler-box"><b>${esc(PLATTFORMEN.find(x => x.id === p)?.name || p)}</b>
+      <p>${esc(v.meldung)}</p><small>${esc(v.zeit ? new Date(v.zeit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : "")} · Selbst hochladen und abhaken oder:</small>
+      <button class="knopf primaer" onclick="erneutVersuchen('${it.id}','${p}')">Erneut versuchen</button></div>`).join("")}</div>`;
+}
+function ohne(obj, key) { const o = Object.assign({}, obj || {}); delete o[key]; return Object.keys(o).length ? o : null; }
+function erneutVersuchen(id, p) {
+  const s = STAND.items[id] || {};
+  setzen(id, { fehler: ohne(s.fehler, p), upload_laeuft: ohne(s.upload_laeuft, p) });
+  ["fehler", "upload_laeuft"].forEach(k => { if (STAND.items[id][k] === null) delete STAND.items[id][k]; });
+  zeichnen(); toast("Wird beim nächsten Lauf erneut versucht");
+}
+
+/* ---------- Verworfen ---------- */
+function verworfene() { return DATEN.items.map(eintrag).filter(it => it.entfernt); }
+function verworfenOeffnen() { offenId = "__verworfen"; verworfenFuellen(); $("blatt").classList.add("offen"); $("schleier").classList.add("offen"); $("blatt").setAttribute("aria-hidden", "false"); }
+function verworfenFuellen() {
+  const liste = verworfene().sort((a, b) => String(b.entfernt_am || "").localeCompare(String(a.entfernt_am || "")));
+  $("blattTake").textContent = "Archiv";
+  $("blattTitel").textContent = "Verworfen";
+  $("blattSub").textContent = "Aus dem Board genommene Videos. Zum Nachschauen und für neue Ideen.";
+  $("blattInhalt").innerHTML = `<div><div class="label">${liste.length} verworfen</div><div class="texte">${liste.map(it => `
+    <div class="verworfen-zeile">
+      ${it.bild ? `<div class="bild" style="background-image:url('${url(it.bild)}')"></div>` : `<div class="bild skript">${SKRIPT_ICON}</div>`}
+      <div class="t"><b>${esc(it.titel)}</b><small>${esc([STUFEN.find(s => s.id === it.stage)?.name, it.tiktok && "TikTok", it.youtube && "YouTube", it.entfernt_am && "verworfen " + new Date(it.entfernt_am).toLocaleDateString("de-DE")].filter(Boolean).join(" · "))}</small></div>
+      <button class="knopf" onclick="blattAuf('${it.id}')">Ansehen</button>
+      <button class="knopf primaer" onclick="zurueckholen('${it.id}');verworfenFuellen()">Zurückholen</button>
+    </div>`).join("") || '<div class="leer">Noch nichts verworfen</div>'}</div></div>`;
+}
+
+/* ---------- Texte bearbeiten (eigene Fassung in state.json, Original bleibt in data.json) ---------- */
+// Texte kommen aus data.json oder (bei hochgeladenen Videos) vom Agenten über state.json
+const texteVon = id => eintrag(DATEN.items.find(x => x.id === id)).texte || [];
+function textVon(id, i) {
+  const t = texteVon(id)[i];
+  const neu = (STAND.items[id] || {}).texte_neu || {};
+  return neu[t.name] ?? t.text;
+}
+function textBearbeitet(id, i) { const t = texteVon(id)[i]; return ((STAND.items[id] || {}).texte_neu || {})[t.name] !== undefined; }
+function textBearbeiten(id, i) {
+  const zeile = $("tz" + i);
+  zeile.classList.remove("offen");
+  zeile.querySelector(".text-vorschau").style.display = "none";
+  const box = document.createElement("div"); box.className = "text-edit";
+  box.innerHTML = `<textarea></textarea><div>
+    ${textBearbeitet(id, i) ? `<button class="knopf" onclick="textOriginal('${id}',${i})">Original wiederherstellen</button>` : ""}
+    <button class="knopf" onclick="blattFuellen('${id}')">Abbrechen</button>
+    <button class="knopf primaer" onclick="textSpeichern('${id}',${i})">Speichern</button></div>`;
+  zeile.appendChild(box);
+  const ta = box.querySelector("textarea"); ta.value = textVon(id, i); ta.focus();
+}
+function textSpeichern(id, i) {
+  const t = texteVon(id)[i];
+  const wert = $("tz" + i).querySelector(".text-edit textarea").value;
+  const neu = Object.assign({}, (STAND.items[id] || {}).texte_neu || {});
+  if (wert === t.text) delete neu[t.name]; else neu[t.name] = wert;
+  setzen(id, { texte_neu: neu }); blattFuellen(id); toast(t.name + " gespeichert");
+}
+function textOriginal(id, i) {
+  const t = texteVon(id)[i];
+  const neu = Object.assign({}, (STAND.items[id] || {}).texte_neu || {}); delete neu[t.name];
+  setzen(id, { texte_neu: neu }); blattFuellen(id); toast("Original wiederhergestellt");
+}
+function weiter(id, ev) {
+  const it = eintrag(DATEN.items.find(x => x.id === id));
+  const i = STUFEN.findIndex(s => s.id === it.stage);
+  if (i < STUFEN.length - 1) stufeSetzen(id, STUFEN[i + 1].id, ev);
+}
+
+/* ---------- Zeichnen ---------- */
+function karteHtml(it) {
+  const bild = it.bild ? `<div class="bild" style="background-image:url('${url(it.bild)}')"></div>` : `<div class="bild skript">${SKRIPT_ICON}</div>`;
+  let fuss = "";
+  if (it.stage === "bereit" || it.stage === "live") {
+    fuss = PLATTFORMEN.map(p => `<button class="plattform ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten('${it.id}','${p.id}',event)" aria-pressed="${!!it[p.id]}"><span class="box">${HAKEN}</span>${p.name}</button>`).join("");
+  } else {
+    const naechste = STUFEN[STUFEN.findIndex(s => s.id === it.stage) + 1];
+    fuss = (it.dauer ? `<span class="chip">${esc(it.dauer)}</span>` : "") + `<button class="weiter" onclick="weiter('${it.id}',event)">${naechste.name} ${PFEIL}</button>`;
+  }
+  return `<div class="karte ${it.stage === "bereit" ? "bereit" : ""} ${zuletztBewegt === it.id ? "neu" : ""}" role="button" tabindex="0" onclick="blattAuf('${it.id}')" onkeydown="if(event.key==='Enter')blattAuf('${it.id}')">
+    ${bild}
+    <div class="karte-text">
+      ${it.take ? `<div class="take">${esc(it.take)}</div>` : ""}
+      <div class="karte-titel">${esc(it.titel)}</div>
+      ${it.untertitel ? `<div class="karte-sub">${esc(it.untertitel)}</div>` : ""}
+      ${autoChip(it)}
+      ${it.fehler && Object.keys(it.fehler).length ? `<div class="termin fehler-chip">⚠ Upload fehlgeschlagen: ${esc(Object.keys(it.fehler).map(p => PLATTFORMEN.find(x => x.id === p)?.name).join(" + "))}</div>` : ""}
+      ${it.plan && it.plan.zeit ? `<div class="termin">📅 ${esc(planText(it.plan))} · ${esc((it.plan.plattformen || []).map(p => PLATTFORMEN.find(x => x.id === p)?.name).join(" + "))}</div>` : ""}
+      <div class="karte-fuss">${fuss}</div>
+    </div>
+  </div>`;
+}
+function zeichnen() {
+  const liste = alle();
+  const zahl = st => liste.filter(i => i.stage === st).length;
+  $("kzBereit").textContent = zahl("bereit");
+  $("kzSchnitt").textContent = zahl("schnitt");
+  $("kzLive").textContent = zahl("live");
+  const nv = verworfene().length; $("kzVerworfen").textContent = nv ? nv : "";
+  $("reiter").innerHTML = STUFEN.map(s => `<button class="${s.id === reiterAktiv ? "an" : ""}" onclick="reiterWahl('${s.id}')">${s.name}<span>${zahl(s.id)}</span></button>`).join("");
+  $("tafel").innerHTML = STUFEN.map(s => {
+    const karten = liste.filter(i => i.stage === s.id);
+    return `<section class="spalte ${s.id === reiterAktiv ? "sichtbar" : ""}" data-stage="${s.id}">
+      <div class="spalte-kopf"><i></i><h2>${s.name}</h2><span>${karten.length}</span></div>
+      <div class="spalte-inhalt">${karten.length ? karten.map(karteHtml).join("") : '<div class="leer">Nichts in dieser Stufe</div>'}</div>
+    </section>`;
+  }).join("");
+  zuletztBewegt = null;
+  if (offenId) blattFuellen(offenId);
+}
+function reiterWahl(id) { reiterAktiv = id; try { localStorage.setItem("ccc_reiter", id); } catch (e) {} zeichnen(); window.scrollTo({ top: 0 }); }
+
+/* ---------- Detailblatt ---------- */
+function blattAuf(id) { offenId = id; blattFuellen(id); $("blatt").classList.add("offen"); $("schleier").classList.add("offen"); $("blatt").setAttribute("aria-hidden", "false"); }
+function blattZu() {
+  $("blatt").classList.remove("offen"); $("schleier").classList.remove("offen"); $("blatt").setAttribute("aria-hidden", "true");
+  const v = $("blattInhalt").querySelector("video"); if (v) v.pause();
+  offenId = null;
+}
+function blattFuellen(id) {
+  if (id === "__ideen") return ideenFuellen();
+  if (id === "__verworfen") return verworfenFuellen();
+  if (id === "__upload") return;
+  const it = eintrag(DATEN.items.find(x => x.id === id));
+  $("blattTake").textContent = [it.take, it.datum && it.datum.split("-").reverse().join(".")].filter(Boolean).join(" · ");
+  $("blattTitel").textContent = it.titel;
+  $("blattSub").textContent = it.untertitel || "";
+  const quelle = it.video || it.roh;
+  const vorhandenesVideo = $("blattInhalt").querySelector("video");
+  const behalteVideo = vorhandenesVideo && vorhandenesVideo.dataset.id === id && vorhandenesVideo.dataset.quelle === quelle;
+  const playerHtml = quelle
+    ? `<div class="player" id="playerPlatz"></div>`
+    : `<div class="player" style="display:grid;place-items:center;background:linear-gradient(160deg,#2E2B29,#232325)">${SKRIPT_ICON}</div>`;
+  const schalter = (it.stage === "bereit" || it.stage === "live") ? `<div><div class="label">Gepostet</div><div class="schalter-liste">${PLATTFORMEN.map(p =>
+    `<button class="schalter ${it[p.id] ? "an" : ""}" onclick="plattformUmschalten('${it.id}','${p.id}')"><span class="box">${HAKEN}</span><b>${p.name}</b><small>${it[p.id] ? "erledigt" : "offen"}</small></button>`).join("")}</div></div>` : "";
+  const aktionen = [
+    it.video ? `<a class="knopf primaer" href="${url(it.video)}?download=1" download>⬇️ Video laden</a>` : "",
+    it.bild && it.video ? `<a class="knopf" href="${url(it.bild)}" download>Thumbnail</a>` : "",
+    `<button class="knopf" onclick="thumbnailAendern('${it.id}')">🖼️ Thumbnail ändern</button>`,
+    it.bild_vorher !== undefined ? `<button class="knopf" onclick="thumbnailZurueck('${it.id}')">Altes Thumbnail zurück</button>` : "",
+    it.roh ? `<a class="knopf" href="${url(it.roh)}?download=1" download>⬇️ Rohdatei</a>` : "",
+    it.youtube_link ? `<a class="knopf" href="${esc(it.youtube_link)}" target="_blank" rel="noopener">Auf YouTube ↗</a>` : "",
+  ].filter(Boolean).join("");
+  const texte = (it.texte || []).map((t, i) => { const txt = textVon(it.id, i); return `<div class="text-zeile" id="tz${i}">
+      <div class="text-kopf"><b>${esc(t.name)}</b>
+        ${textBearbeitet(it.id, i) ? `<span class="marke-neu">bearbeitet</span>` : ""}
+        ${t.prompter ? `<button onclick="prompterAuf('${it.id}',${i})">Teleprompter</button>` : ""}
+        <button onclick="this.closest('.text-zeile').classList.toggle('offen')">Lesen</button>
+        <button onclick="textBearbeiten('${it.id}',${i})">Bearbeiten</button>
+        <button class="kopieren" onclick="kopieren('${it.id}',${i})">Kopieren</button>
+      </div>
+      <div class="text-vorschau">${esc(txt.replace(/\s+/g, " ").slice(0, 120))}</div>
+      <div class="text-voll">${esc(txt)}</div>
+    </div>`; }).join("");
+  $("blattInhalt").innerHTML = `
+    <div class="oben">
+      ${playerHtml}
+      <div class="status">
+        <div><div class="label">Stufe</div><div class="stufen">${STUFEN.map(s => `<button class="${s.id === it.stage ? "an" : ""}" onclick="stufeSetzen('${it.id}','${s.id}')">${s.name}</button>`).join("")}</div></div>
+        ${schalter}
+        ${fehlerHtml(it)}
+        ${planHtml(it)}
+        ${aktionen ? `<div class="aktionen">${aktionen}</div>` : ""}
+      </div>
+    </div>
+    ${autoHtml(it)}
+    ${it.hinweis ? `<div class="hinweis">${esc(it.hinweis)}</div>` : ""}
+    ${texte ? `<div><div class="label">Texte</div><div class="texte">${texte}</div></div>` : ""}
+    ${it.ordner ? `<div><div class="label">Ordner</div><div class="pfad"><code>${esc(it.ordner)}</code><button onclick="kopierText(this.previousElementSibling.textContent)">Kopieren</button></div></div>` : ""}
+    <div>${it.entfernt
+      ? `<button class="knopf primaer" onclick="zurueckholen('${it.id}')">Zurückholen ins Board</button>`
+      : `<button class="knopf" style="color:#ff8a80;border-color:rgba(255,138,128,.35)" onclick="entfernen('${it.id}')">Aus dem Board entfernen</button>`}</div>`;
+  if (quelle) {
+    const platz = $("playerPlatz");
+    if (behalteVideo) platz.appendChild(vorhandenesVideo);
+    else {
+      const v = document.createElement("video");
+      v.controls = true; v.playsInline = true; v.preload = "metadata"; v.dataset.id = id; v.dataset.quelle = quelle;
+      if (it.bild) v.poster = url(it.bild);
+      v.src = url(quelle);
+      platz.appendChild(v);
+    }
+  }
+}
+
+/* ---------- Ideen ---------- */
+function ideenOeffnen() { offenId = "__ideen"; ideenFuellen(); $("blatt").classList.add("offen"); $("schleier").classList.add("offen"); }
+function ideenFuellen() {
+  $("blattTake").textContent = "Ideen-Speicher";
+  $("blattTitel").textContent = "Idee festhalten";
+  $("blattSub").textContent = "Einsprechen oder tippen. Gespeichert für Handy und PC.";
+  const entwurf = $("ideeText") ? $("ideeText").value : "";
+  $("blattInhalt").innerHTML = `
+    <div class="ideen-eingabe">
+      <textarea id="ideeText" placeholder="Zum Beispiel: Lokale Modelle mit 36 GB VRAM im Alltag testen …"></textarea>
+      <div class="ideen-knoepfe">
+        <button class="knopf aufnahme ${erkennung && erkennung.laeuft ? "laeuft" : ""}" id="aufnahmeKnopf" onclick="diktat()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          <span id="aufnahmeText">${erkennung && erkennung.laeuft ? "Stopp" : "Einsprechen"}</span></button>
+        <span class="zeit" id="aufnahmeZeit"></span>
+        <button class="knopf primaer" style="margin-left:auto" onclick="ideeSpeichern()">Speichern</button>
+      </div>
+    </div>
+    <div><div class="label">${STAND.ideen.length} gespeichert</div><div class="texte">${STAND.ideen.slice().reverse().map(i => `
+      <div class="idee"><div style="flex:1;min-width:0"><p>${esc(i.text)}</p><small>${esc([i.quelle, i.zeit && new Date(i.zeit).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })].filter(Boolean).join(" · "))}</small></div>
+        <button onclick="kopierText(${esc(JSON.stringify(i.text))})">Kopieren</button><button onclick="ideeLoeschen('${esc(i.id)}')">Löschen</button></div>`).join("") || '<div class="leer">Noch keine Ideen</div>'}</div></div>`;
+  $("ideeText").value = entwurf;
+}
+function ideeSpeichern(quelle) {
+  const t = $("ideeText").value.trim();
+  if (!t) return toast("Erst etwas eintippen oder einsprechen");
+  STAND.ideen.push({ id: String(Date.now()), text: t, quelle: quelle || "Eingetippt", zeit: new Date().toISOString() });
+  $("ideeText").value = "";
+  ideenSpeichern(); ideenFuellen(); toast("Idee gespeichert");
+}
+function ideeLoeschen(id) {
+  const knopf = event.target;
+  if (knopf.dataset.sicher !== "1") { knopf.dataset.sicher = "1"; knopf.textContent = "Wirklich?"; setTimeout(() => { if (knopf.isConnected) { knopf.dataset.sicher = ""; knopf.textContent = "Löschen"; } }, 2500); return; }
+  STAND.ideen = STAND.ideen.filter(i => i.id !== id); ideenSpeichern(); ideenFuellen();
+}
+let erkennung = null, aufnahmeStart = 0, aufnahmeUhr = null;
+function diktat() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return toast("Spracheingabe gibt es hier nicht. Bitte Chrome oder Safari nutzen.");
+  if (erkennung && erkennung.laeuft) { erkennung.stop(); return; }
+  erkennung = new SR(); erkennung.lang = "de-DE"; erkennung.continuous = true; erkennung.interimResults = true;
+  const basis = $("ideeText").value ? $("ideeText").value.trim() + " " : "";
+  erkennung.onresult = e => { let s = ""; for (const r of e.results) s += r[0].transcript; $("ideeText").value = basis + s; };
+  erkennung.onstart = () => { erkennung.laeuft = true; aufnahmeStart = Date.now(); $("aufnahmeKnopf").classList.add("laeuft"); $("aufnahmeText").textContent = "Stopp";
+    aufnahmeUhr = setInterval(() => { const s = Math.floor((Date.now() - aufnahmeStart) / 1000); const z = $("aufnahmeZeit"); if (z) z.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }, 500); };
+  erkennung.onend = () => { erkennung.laeuft = false; clearInterval(aufnahmeUhr); const k = $("aufnahmeKnopf"); if (k) { k.classList.remove("laeuft"); $("aufnahmeText").textContent = "Einsprechen"; } };
+  erkennung.onerror = e => toast(e.error === "not-allowed" ? "Mikrofon nicht erlaubt" : "Spracheingabe: " + e.error);
+  erkennung.start();
+}
+
+/* ---------- Kopieren, Teleprompter, Toast ---------- */
+function kopieren(id, i) { kopierText(textVon(id, i)); }
+function kopierText(t) {
+  const fallback = () => { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); toast("Kopiert"); } catch (e) { toast("Kopieren nicht möglich"); } a.remove(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(() => toast("Kopiert"), fallback); else fallback();
+}
+let prompterGroesse = 40;
+function prompterAuf(id, i) { const it = DATEN.items.find(x => x.id === id); $("prompterTitel").textContent = it.titel; $("prompterText").textContent = textVon(id, i); $("prompterText").style.fontSize = prompterGroesse + "px"; $("prompter").classList.add("offen"); }
+function prompterZu() { $("prompter").classList.remove("offen"); }
+function schrift(d) { prompterGroesse = Math.max(20, Math.min(80, prompterGroesse + d)); $("prompterText").style.fontSize = prompterGroesse + "px"; }
+let toastUhr;
+function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("zeigen"); clearTimeout(toastUhr); toastUhr = setTimeout(() => e.classList.remove("zeigen"), 2200); }
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if ($("prompter").classList.contains("offen")) prompterZu(); else blattZu(); } });
+async function aktualisieren() {
+  try { DATEN = await (await fetch("data.json", { cache: "no-store" })).json(); } catch (e) {}
+  await standHolen(); zeichnen();
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && DATEN.items.length) aktualisieren(); });
+window.addEventListener("pageshow", e => { if (e.persisted) aktualisieren(); });
+setInterval(() => { if (document.visibilityState === "visible" && !offenId) aktualisieren(); }, 60000);
+if (matchMedia("(max-width: 760px)").matches === false) reiterAktiv = reiterAktiv || "bereit";
+laden();
+fetch("api/config", { cache: "no-store" }).then(r => r.json()).then(c => { if (c.anzeigename) { $("anzeigename").textContent = c.anzeigename; document.title = "Command Center · " + c.anzeigename; } }).catch(() => {});
+
+</script>
+
+</body>
+</html>
