@@ -64,6 +64,13 @@ einem Lauf gilt eine Pause (Standard 10 Minuten), die eine Änderung im Board au
 
 ## Einrichtung
 
+**Herunterladen:** oben auf dieser Seite **Code → Download ZIP** und entpacken, oder im Terminal:
+
+```bash
+git clone https://github.com/onursi/content-command-center-template.git
+cd content-command-center-template
+```
+
 **Schnell:** Öffne Claude Code in diesem Ordner und kopiere den Text aus [`AGENT-SETUP.md`](AGENT-SETUP.md) hinein.
 Der Agent richtet alles ein und fragt nach, was er wissen muss.
 
