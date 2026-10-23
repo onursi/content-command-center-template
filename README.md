@@ -15,22 +15,36 @@ etwas zu tun gibt.
 ## Ablauf
 
 ```mermaid
-flowchart LR
-    S[Skript<br/>Teleprompter] --> R[Roh<br/>Aufnahme hochladen]
-    R --> A{{Schnitt-Agent<br/>claude -p}}
-    A --> F1[Freigabe 1<br/>Roh-Schnitt + Storyboard]
-    F1 -- Korrektur --> A
-    F1 -- Freigeben --> A2{{Schnitt-Agent<br/>fertiges Video}}
-    A2 --> F2[Freigabe 2<br/>fertiges Video]
-    F2 -- Korrektur --> A2
-    F2 -- Freigeben --> B[Bereit]
-    B --> T[Termin setzen<br/>= dein Ja zum Upload]
-    T --> U{{Upload-Agent<br/>claude -p --chrome}}
-    U --> L[Live<br/>Häkchen + Link]
-    U -- Problem --> E[Fehler im Board<br/>„Erneut versuchen“]
+flowchart TD
+    subgraph P1["1 · Vorbereiten"]
+        S["📝 Skript<br/>Teleprompter"] --> R["🎥 Roh<br/>Aufnahme hochladen"]
+    end
+    subgraph P2["2 · Schneiden mit zwei Freigaben"]
+        A{{"🤖 Schnitt-Agent<br/>Roh-Schnitt"}} --> F1["✋ Freigabe 1<br/>Roh-Schnitt + Storyboard"]
+        F1 -- "Korrektur" --> A
+        F1 -- "Freigeben" --> A2{{"🤖 Schnitt-Agent<br/>fertiges Video"}}
+        A2 --> F2["✋ Freigabe 2<br/>fertiges Video"]
+        F2 -- "Korrektur" --> A2
+    end
+    subgraph P3["3 · Veröffentlichen"]
+        B["✅ Bereit"] --> T["📅 Termin setzen<br/>= dein Ja zum Upload"]
+        T --> U{{"🤖 Upload-Agent<br/>Chrome oder Composio"}}
+        U --> L["🚀 Live<br/>Häkchen + Link"]
+        U -- "Problem" --> E["⚠️ Fehler im Board<br/>Erneut versuchen"]
+    end
+    R --> A
+    F2 -- "Freigeben" --> B
+    classDef agent fill:#FF7A1A,stroke:#c25400,color:#111,font-weight:bold
+    classDef du fill:#1f2937,stroke:#FF7A1A,color:#fff
+    classDef ok fill:#14532d,stroke:#22c55e,color:#fff
+    classDef err fill:#7f1d1d,stroke:#ef4444,color:#fff
+    class A,A2,U agent
+    class F1,F2,T du
+    class L ok
+    class E err
 ```
 
-Die Rauten sind Agent-Läufe. Alles andere passiert im Board, auf dem PC oder am Handy.
+**Orange** = ein Agent arbeitet · **dunkel mit orangem Rand** = du entscheidest. Alles andere passiert im Board, am PC oder am Handy.
 
 ## Was es kann
 
